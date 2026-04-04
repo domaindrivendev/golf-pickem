@@ -92,3 +92,53 @@ export async function writeTokens(tokens: MagicToken[]): Promise<void> {
     fs.writeFileSync(path.join(DATA_DIR, 'magic-tokens.json'), JSON.stringify(tokens, null, 2))
   })
 }
+
+// ── Competitions ──────────────────────────────────────────────────────────────
+
+export interface Golfer {
+  id: string
+  name: string
+  odds: number
+  strokeScore?: number
+}
+
+export interface Pick {
+  id: string
+  userId: string
+  userEmail: string
+  golferIds: string[]
+  submittedAt: string
+}
+
+export interface Competition {
+  id: string
+  name: string
+  status: 'draft' | 'open' | 'live' | 'complete'
+  field: Golfer[]
+  picks: Pick[]
+  cutLine?: number
+  createdAt: string
+}
+
+function ensureCompetitionsFile() {
+  ensureDataDir()
+  const filePath = path.join(DATA_DIR, 'competitions.json')
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify([], null, 2))
+  }
+}
+
+export async function readCompetitions(): Promise<Competition[]> {
+  ensureCompetitionsFile()
+  return withLock('competitions', () => {
+    const data = fs.readFileSync(path.join(DATA_DIR, 'competitions.json'), 'utf-8')
+    return JSON.parse(data) as Competition[]
+  })
+}
+
+export async function writeCompetitions(competitions: Competition[]): Promise<void> {
+  ensureCompetitionsFile()
+  return withLock('competitions', () => {
+    fs.writeFileSync(path.join(DATA_DIR, 'competitions.json'), JSON.stringify(competitions, null, 2))
+  })
+}

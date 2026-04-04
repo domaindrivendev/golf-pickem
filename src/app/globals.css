@@ -261,3 +261,299 @@ body {
   opacity: 1;
   background: var(--fairway);
 }
+
+/* ── Page wrapper variants ────────────────────────── */
+.page-wrapper-wide {
+  max-width: 900px;
+}
+
+/* ── Card header row ─────────────────────────────── */
+.card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* ── Status badges ────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-draft   { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-300); }
+.status-open    { background: #e3f4eb; color: #1a6b3c; border: 1px solid #a8d5b8; }
+.status-live    { background: #fff3e0; color: #c45000; border: 1px solid #ffc080; }
+.status-complete{ background: #e8e4f0; color: #4a3e6e; border: 1px solid #c0b0d8; }
+
+/* ── Generic text input ───────────────────────────── */
+.text-input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  font-size: 1rem;
+  font-family: system-ui, sans-serif;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  outline: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.text-input:focus {
+  border-color: var(--fairway);
+  box-shadow: 0 0 0 3px rgba(64,145,108,0.15);
+}
+
+/* ── Data table ───────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: system-ui, sans-serif;
+  font-size: 0.88rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-600);
+  border-bottom: 2px solid var(--gray-300);
+}
+
+.data-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--text);
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: var(--green-pale); }
+
+.row-eliminated td {
+  color: var(--gray-600);
+  opacity: 0.7;
+}
+
+.row-me td { background: #f0faf4; }
+.row-me:hover td { background: #e3f5eb !important; }
+
+.rank-cell {
+  font-weight: 700;
+  color: var(--green-mid);
+}
+
+/* ── Section heading ──────────────────────────────── */
+.section-heading {
+  font-family: system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--green-pale);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Divider ──────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--gray-300);
+  margin: 1.5rem 0;
+}
+
+/* ── Button variants ──────────────────────────────── */
+.btn-sm {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* ── Golfer form rows ─────────────────────────────── */
+.golfer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.golfer-input-name {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: system-ui, sans-serif;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  outline: none;
+  color: var(--text);
+}
+
+.golfer-input-name:focus { border-color: var(--fairway); box-shadow: 0 0 0 3px rgba(64,145,108,0.15); }
+
+.golfer-input-odds {
+  width: 80px;
+  padding: 0.55rem 0.5rem;
+  font-size: 0.9rem;
+  font-family: system-ui, sans-serif;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  outline: none;
+  color: var(--text);
+  text-align: right;
+}
+
+.golfer-input-odds:focus { border-color: var(--fairway); box-shadow: 0 0 0 3px rgba(64,145,108,0.15); }
+
+.odds-suffix {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: var(--gray-600);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.4rem;
+  line-height: 1;
+  border-radius: 4px;
+}
+.btn-remove:hover { color: #e05252; background: #fdecea; }
+
+.btn-add-golfer {
+  color: var(--fairway);
+  border-color: var(--fairway);
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+}
+
+/* ── Score input ──────────────────────────────────── */
+.score-input {
+  width: 80px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  font-family: system-ui, sans-serif;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  outline: none;
+  text-align: center;
+  color: var(--text);
+}
+.score-input:focus { border-color: var(--fairway); box-shadow: 0 0 0 3px rgba(64,145,108,0.15); }
+
+/* ── Pick option (participant pick selection) ─────── */
+.pick-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  font-family: system-ui, sans-serif;
+  user-select: none;
+}
+
+.pick-option:hover:not(.disabled) { border-color: var(--fairway); background: var(--green-pale); }
+.pick-option.selected { border-color: var(--fairway); background: var(--green-pale); }
+.pick-option.disabled { opacity: 0.45; cursor: not-allowed; }
+
+.pick-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--fairway);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pick-name { flex: 1; font-weight: 500; color: var(--text); }
+.pick-odds { font-size: 0.85rem; color: var(--gray-600); }
+
+/* ── Odds / selection counter ─────────────────────── */
+.odds-counter {
+  font-family: system-ui, sans-serif;
+  font-size: 0.88rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--gray-100);
+  border-radius: 6px;
+  color: var(--gray-600);
+}
+.odds-counter.valid   { color: var(--green-dark); background: var(--green-pale); }
+.odds-counter.invalid { color: #7b1a1a; background: #fdecea; }
+
+/* ── Competition card links (picks list) ──────────── */
+.competition-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.competition-card {
+  padding: 0.9rem 1rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 8px;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.competition-card:hover {
+  border-color: var(--fairway);
+  background: var(--green-pale);
+}
+
+.competition-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: system-ui, sans-serif;
+  margin-bottom: 0.3rem;
+}
+
+.competition-card-meta {
+  font-family: system-ui, sans-serif;
+  font-size: 0.82rem;
+  color: var(--gray-600);
+}
+
+/* ── My picks cards ───────────────────────────────── */
+.my-picks-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.my-pick-card {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.85rem 1rem;
+  background: var(--green-pale);
+  border: 1.5px solid var(--green-light);
+  border-radius: 8px;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+.my-pick-card.pick-cut {
+  background: #fdecea;
+  border-color: #f0a0a0;
+  opacity: 0.7;
+}
+
+.my-pick-name { font-weight: 600; font-size: 0.9rem; color: var(--green-dark); }
+.my-pick-odds { font-size: 0.8rem; color: var(--gray-600); margin-top: 0.25rem; }
+.my-pick-score { font-size: 0.8rem; color: var(--fairway); margin-top: 0.25rem; font-weight: 600; }
+.pick-cut-label { font-size: 0.78rem; color: #e05252; font-weight: 700; margin-top: 0.25rem; }

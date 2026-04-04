@@ -24,8 +24,8 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin') && session.role !== 'admin') {
       return NextResponse.redirect(new URL('/picks', request.url))
     }
-    if (pathname.startsWith('/picks') && session.role !== 'participant') {
-      return NextResponse.redirect(new URL('/admin', request.url))
+    if (pathname.startsWith('/picks') && session.role !== 'participant' && session.role !== 'admin') {
+      return NextResponse.redirect(new URL('/auth/signin', request.url))
     }
   }
 

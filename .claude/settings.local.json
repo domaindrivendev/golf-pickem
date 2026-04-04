@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --app --no-tailwind --no-eslint --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest . --typescript --app --no-tailwind --no-eslint --src-dir --import-alias \"@/*\" --yes --force)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(nvm list:*)",
+      "Bash(nvm use:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(npx playwright:*)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium)",
+      "Bash(npm test:*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  }
+}

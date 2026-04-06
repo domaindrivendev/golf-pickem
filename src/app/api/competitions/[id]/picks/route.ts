@@ -42,7 +42,7 @@ export async function POST(
     )
   }
 
-  await prisma.pick.create({
+  const pick = await prisma.pick.create({
     data: {
       participantName: name,
       competitionId: params.id,
@@ -50,5 +50,5 @@ export async function POST(
     },
   })
 
-  return NextResponse.json({ ok: true }, { status: 201 })
+  return NextResponse.json({ ok: true, pickId: pick.id }, { status: 201 })
 }

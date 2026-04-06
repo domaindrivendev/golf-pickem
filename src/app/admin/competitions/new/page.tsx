@@ -72,7 +72,6 @@ export default function NewCompetitionPage() {
         name: g.name,
         odds: String(g.odds),
       })))
-      if (!name) setName(sportTitle)
       setBookmaker(data.bookmaker)
       setSelectedSportKey(sportKey)
       setShowSports(false)

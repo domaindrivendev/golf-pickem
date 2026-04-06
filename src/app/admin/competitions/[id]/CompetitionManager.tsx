@@ -51,6 +51,10 @@ export default function CompetitionManager({ competition }: { competition: Compe
   const [scoresMsg, setScoresMsg] = useState('')
   const [cutMsg, setCutMsg] = useState('')
 
+  // Import live scores state
+  const [importLoading, setImportLoading] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+
   async function handleAdvance() {
     setAdvanceError('')
     setAdvanceLoading(true)
@@ -112,6 +116,40 @@ export default function CompetitionManager({ competition }: { competition: Compe
       router.refresh()
     } finally {
       setCutLoading(false)
+    }
+  }
+
+  async function handleImportScores() {
+    setImportMsg('')
+    setImportLoading(true)
+    try {
+      const res = await fetch(`/api/competitions/${competition.id}/import-scores`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setImportMsg(data.error || 'Failed to import scores')
+        return
+      }
+      const { matched, unmatched } = data as {
+        matched: Array<{ id: string; name: string; score: number }>
+        unmatched: string[]
+      }
+      setImportMsg(
+        `Imported ${matched.length}/${matched.length + unmatched.length} golfers.` +
+        (unmatched.length > 0 ? ` ${unmatched.length} not matched.` : '')
+      )
+      // Update local score state from imported values
+      setScores((prev) => {
+        const updated = { ...prev }
+        for (const m of matched) {
+          updated[m.id] = String(m.score)
+        }
+        return updated
+      })
+      router.refresh()
+    } finally {
+      setImportLoading(false)
     }
   }
 
@@ -205,9 +243,28 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 {scoresMsg}
               </p>
             )}
-            <button type="submit" className="btn btn-primary btn-sm" disabled={scoresLoading}>
-              {scoresLoading ? 'Saving...' : 'Save Scores'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={scoresLoading}>
+                {scoresLoading ? 'Saving...' : 'Save Scores'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleImportScores}
+                disabled={importLoading || !competition.sportKey}
+                title={!competition.sportKey ? 'Link a tournament below to enable' : undefined}
+              >
+                {importLoading ? 'Importing...' : 'Import Live Scores'}
+              </button>
+              {importMsg && (
+                <span
+                  className="hint"
+                  style={{ color: importMsg.startsWith('Imported') ? 'var(--green-mid)' : '#e05252' }}
+                >
+                  {importMsg}
+                </span>
+              )}
+            </div>
           </form>
         ) : (
           <table className="data-table">
@@ -248,7 +305,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 className="score-input"
                 value={cutLine}
                 onChange={(e) => setCutLine(e.target.value)}
-                placeholder="e.g. 145"
+                placeholder="e.g. +5"
                 required
                 style={{ width: '90px' }}
               />

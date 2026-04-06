@@ -33,6 +33,7 @@ export default function NewCompetitionPage() {
   const [oddsError, setOddsError] = useState('')
   const [showSports, setShowSports] = useState(false)
   const [bookmaker, setBookmaker] = useState('')
+  const [selectedSportKey, setSelectedSportKey] = useState('')
 
   async function handleLoadSports() {
     setSportsError('')
@@ -73,6 +74,7 @@ export default function NewCompetitionPage() {
       })))
       if (!name) setName(sportTitle)
       setBookmaker(data.bookmaker)
+      setSelectedSportKey(sportKey)
       setShowSports(false)
     } catch {
       setOddsError('Network error. Please try again.')
@@ -117,6 +119,7 @@ export default function NewCompetitionPage() {
         body: JSON.stringify({
           name,
           field: validGolfers.map((g) => ({ name: g.name.trim(), odds: Number(g.odds) })),
+          ...(selectedSportKey ? { sportKey: selectedSportKey } : {}),
         }),
       })
       const data = await res.json()

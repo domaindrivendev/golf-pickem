@@ -29,6 +29,7 @@ export interface Competition {
   field: Golfer[]
   picks: Pick[]
   cutLine?: number
+  sportKey?: string
   createdAt: string
 }
 
@@ -42,6 +43,7 @@ function mapCompetition(c: {
   name: string
   status: string
   cutLine: number | null
+  sportKey: string | null
   createdAt: Date
   golfers: { id: string; name: string; odds: number; strokeScore: number | null }[]
   picks: {
@@ -56,6 +58,7 @@ function mapCompetition(c: {
     name: c.name,
     status: c.status as Competition['status'],
     cutLine: c.cutLine ?? undefined,
+    sportKey: c.sportKey ?? undefined,
     createdAt: c.createdAt.toISOString(),
     field: c.golfers.map((g) => ({
       id: g.id,

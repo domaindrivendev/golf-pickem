@@ -11,22 +11,12 @@
       "Bash(npx tsc:*)",
       "Bash(source ~/.nvm/nvm.sh)",
       "Bash(npx playwright:*)",
-      "Bash(PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium)",
       "Bash(npm test:*)",
-      "Bash(ADMIN_PASSWORD=admin npx tsx scripts/seed.ts)",
       "Bash(command -v nvm)",
       "Bash(nvm ls:*)",
       "Bash(npx prisma:*)",
-      "Bash(command -v psql)",
-      "Bash(psql --version)",
-      "Bash(command -v docker)",
-      "Bash(docker --version)",
-      "Bash(command -v brew)",
       "Bash(NVM_DIR=\"$HOME/.nvm\")",
-      "Bash(. \"$NVM_DIR/nvm.sh\")",
-      "Bash(ps:*)",
-      "Bash(pg_isready -h localhost -p 5432)",
-      "Bash(brew services:*)"
+      "Bash(pg_isready -h localhost -p 5432)"
     ]
   },
   "sandbox": {

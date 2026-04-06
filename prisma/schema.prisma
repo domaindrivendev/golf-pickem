@@ -20,6 +20,7 @@ model Competition {
   name      String
   status    String   @default("draft")
   cutLine   Int?
+  sportKey  String?
   createdAt DateTime @default(now())
   golfers   Golfer[]
   picks     Pick[]

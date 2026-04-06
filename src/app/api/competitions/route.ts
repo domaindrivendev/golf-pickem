@@ -10,9 +10,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { name, field } = body as {
+  const { name, field, sportKey } = body as {
     name: string
     field: Array<{ name: string; odds: number }>
+    sportKey?: string
   }
 
   if (!name?.trim()) {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: name.trim(),
       status: 'draft',
+      sportKey: sportKey?.trim() || null,
       golfers: {
         create: field.map((g) => ({
           name: g.name.trim(),

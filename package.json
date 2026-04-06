@@ -11,7 +11,13 @@
     "prisma": "prisma",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:start": "docker compose up -d",
+    "db:stop": "docker compose down",
+    "db:reset": "prisma migrate reset --force",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "license": "ISC",
   "dependencies": {

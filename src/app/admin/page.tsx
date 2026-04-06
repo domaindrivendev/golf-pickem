@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth'
 import { readCompetitions } from '@/lib/storage'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import DeleteCompetitionButton from './DeleteCompetitionButton'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -72,13 +73,14 @@ export default async function AdminPage() {
                       </td>
                       <td>{c.field.length} golfers</td>
                       <td>{c.picks.length} picks</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <Link
                           href={`/admin/competitions/${c.id}`}
                           className="btn btn-primary btn-sm"
                         >
                           Manage
                         </Link>
+                        <DeleteCompetitionButton id={c.id} name={c.name} />
                       </td>
                     </tr>
                   ))}

@@ -21,7 +21,12 @@
       "Bash(psql --version)",
       "Bash(command -v docker)",
       "Bash(docker --version)",
-      "Bash(command -v brew)"
+      "Bash(command -v brew)",
+      "Bash(NVM_DIR=\"$HOME/.nvm\")",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(ps:*)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(brew services:*)"
     ]
   },
   "sandbox": {

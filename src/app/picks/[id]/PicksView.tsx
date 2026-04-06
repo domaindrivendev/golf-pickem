@@ -275,6 +275,7 @@ export default function PicksView({ competition }: { competition: Competition })
             {leaderboard.length === 0 ? (
               <p className="hint">No picks submitted.</p>
             ) : (
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -332,6 +333,7 @@ export default function PicksView({ competition }: { competition: Competition })
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </>
         )}

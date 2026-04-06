@@ -56,6 +56,8 @@ export default function CompetitionManager({ competition }: { competition: Compe
   const [importMsg, setImportMsg] = useState('')
 
   async function handleAdvance() {
+    const nextLabel = NEXT_STATUS_LABELS[competition.status]
+    if (!window.confirm(`Advance "${competition.name}" to "${nextLabel}"?`)) return
     setAdvanceError('')
     setAdvanceLoading(true)
     try {

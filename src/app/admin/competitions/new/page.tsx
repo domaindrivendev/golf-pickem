@@ -155,9 +155,9 @@ export default function NewCompetitionPage() {
             <div className="odds-loader-box">
               <div className="odds-loader-header">
                 <div>
-                  <strong>Load field from live odds</strong>
+                  <strong>Load field from the-odds-api.com</strong>
                   <p className="hint" style={{ marginTop: '0.2rem' }}>
-                    Automatically import golfers and odds from a live tournament.
+                    Automatically import golfers and odds for an upcoming tournament.
                     {bookmaker && <> Loaded from <strong>{bookmaker}</strong>.</>}
                   </p>
                 </div>

@@ -6,6 +6,7 @@ const ADMIN_EMAIL = 'richie.morris@hotmail.com'
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 
 async function main() {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required')
   const passwordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10)
 
   await prisma.user.upsert({

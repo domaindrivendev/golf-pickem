@@ -8,12 +8,14 @@
     "build": "next build",
     "start": "next start",
     "seed": "npx tsx scripts/seed.ts",
+    "prisma": "prisma",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "next": "^14.2.35",
@@ -28,6 +30,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^11.0.0",
+    "prisma": "^6.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^1.6.1"

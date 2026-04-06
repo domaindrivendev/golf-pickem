@@ -25,5 +25,7 @@ All competitions will have the following lifecycle:
 - The winner is announced
 
 ## Constraints
-- Built using Nextjs and simple file storage
-- Emails are written to a temp file for local dev 
+- Built using Nextjs
+- Use Prisma ORM for data access
+- Host the app on Vercel (free tier)
+- Host the database on Supabase (free tier)

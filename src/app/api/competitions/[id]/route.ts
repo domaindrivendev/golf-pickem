@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { readCompetitions, writeCompetitions } from '@/lib/storage'
+import { prisma } from '@/lib/prisma'
+import { readCompetitionById } from '@/lib/storage'
 
 const STATUS_ORDER = ['draft', 'open', 'live', 'complete'] as const
 
@@ -14,20 +15,22 @@ export async function PATCH(
   }
 
   const body = await req.json()
-  const competitions = await readCompetitions()
-  const idx = competitions.findIndex((c) => c.id === params.id)
-  if (idx === -1) {
+  const competition = await readCompetitionById(params.id)
+  if (!competition) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-
-  const competition = { ...competitions[idx] }
 
   if (body.action === 'advance') {
     const currentIdx = STATUS_ORDER.indexOf(competition.status as (typeof STATUS_ORDER)[number])
     if (currentIdx === STATUS_ORDER.length - 1) {
       return NextResponse.json({ error: 'Already complete' }, { status: 400 })
     }
-    competition.status = STATUS_ORDER[currentIdx + 1]
+    const nextStatus = STATUS_ORDER[currentIdx + 1]
+    await prisma.competition.update({
+      where: { id: params.id },
+      data: { status: nextStatus },
+    })
+    return NextResponse.json({ ...competition, status: nextStatus })
   } else if (body.action === 'setCutLine') {
     if (competition.status !== 'live') {
       return NextResponse.json({ error: 'Can only set cut line during live competition' }, { status: 400 })
@@ -36,12 +39,12 @@ export async function PATCH(
     if (isNaN(cutLine)) {
       return NextResponse.json({ error: 'Invalid cut line' }, { status: 400 })
     }
-    competition.cutLine = cutLine
+    await prisma.competition.update({
+      where: { id: params.id },
+      data: { cutLine },
+    })
+    return NextResponse.json({ ...competition, cutLine })
   } else {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }
-
-  competitions[idx] = competition
-  await writeCompetitions(competitions)
-  return NextResponse.json(competition)
 }

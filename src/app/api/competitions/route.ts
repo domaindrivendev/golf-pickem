@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { readCompetitions, writeCompetitions } from '@/lib/storage'
-import { v4 as uuidv4 } from 'uuid'
+import { prisma } from '@/lib/prisma'
+import { readCompetitions } from '@/lib/storage'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -22,21 +22,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Field must have at least one golfer' }, { status: 400 })
   }
 
-  const competitions = await readCompetitions()
-  const competition = {
-    id: uuidv4(),
-    name: name.trim(),
-    status: 'draft' as const,
-    field: field.map((g) => ({
-      id: uuidv4(),
-      name: g.name.trim(),
-      odds: Number(g.odds),
-    })),
-    picks: [],
-    createdAt: new Date().toISOString(),
-  }
-  competitions.push(competition)
-  await writeCompetitions(competitions)
+  const competition = await prisma.competition.create({
+    data: {
+      name: name.trim(),
+      status: 'draft',
+      golfers: {
+        create: field.map((g) => ({
+          name: g.name.trim(),
+          odds: Number(g.odds),
+        })),
+      },
+    },
+    include: { golfers: true, picks: { include: { golfers: true } } },
+  })
 
-  return NextResponse.json(competition, { status: 201 })
+  return NextResponse.json(
+    {
+      id: competition.id,
+      name: competition.name,
+      status: competition.status,
+      cutLine: competition.cutLine ?? undefined,
+      createdAt: competition.createdAt.toISOString(),
+      field: competition.golfers.map((g) => ({
+        id: g.id,
+        name: g.name,
+        odds: g.odds,
+        strokeScore: g.strokeScore ?? undefined,
+      })),
+      picks: [],
+    },
+    { status: 201 }
+  )
+}
+
+export async function GET() {
+  const competitions = await readCompetitions()
+  return NextResponse.json(competitions)
 }

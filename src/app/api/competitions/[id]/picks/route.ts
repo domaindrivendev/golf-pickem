@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readCompetitions, writeCompetitions } from '@/lib/storage'
-import { v4 as uuidv4 } from 'uuid'
+import { prisma } from '@/lib/prisma'
+import { readCompetitionById } from '@/lib/storage'
 
 export async function POST(
   req: NextRequest,
@@ -16,13 +16,10 @@ export async function POST(
     return NextResponse.json({ error: 'Must pick exactly 3 golfers' }, { status: 400 })
   }
 
-  const competitions = await readCompetitions()
-  const idx = competitions.findIndex((c) => c.id === params.id)
-  if (idx === -1) {
+  const competition = await readCompetitionById(params.id)
+  if (!competition) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-
-  const competition = { ...competitions[idx] }
   if (competition.status !== 'open') {
     return NextResponse.json({ error: 'Competition is not open for picks' }, { status: 400 })
   }
@@ -45,12 +42,13 @@ export async function POST(
     )
   }
 
-  competition.picks = [
-    ...competition.picks,
-    { id: uuidv4(), participantName: name, golferIds, submittedAt: new Date().toISOString() },
-  ]
+  await prisma.pick.create({
+    data: {
+      participantName: name,
+      competitionId: params.id,
+      golfers: { create: golferIds.map((golferId) => ({ golferId })) },
+    },
+  })
 
-  competitions[idx] = competition
-  await writeCompetitions(competitions)
   return NextResponse.json({ ok: true }, { status: 201 })
 }

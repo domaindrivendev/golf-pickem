@@ -13,7 +13,15 @@
       "Bash(npx playwright:*)",
       "Bash(PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium)",
       "Bash(npm test:*)",
-      "Bash(ADMIN_PASSWORD=admin npx tsx scripts/seed.ts)"
+      "Bash(ADMIN_PASSWORD=admin npx tsx scripts/seed.ts)",
+      "Bash(command -v nvm)",
+      "Bash(nvm ls:*)",
+      "Bash(npx prisma:*)",
+      "Bash(command -v psql)",
+      "Bash(psql --version)",
+      "Bash(command -v docker)",
+      "Bash(docker --version)",
+      "Bash(command -v brew)"
     ]
   },
   "sandbox": {

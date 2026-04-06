@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}
+
+model Competition {
+  id        String   @id @default(uuid())
+  name      String
+  status    String   @default("draft")
+  cutLine   Int?
+  createdAt DateTime @default(now())
+  golfers   Golfer[]
+  picks     Pick[]
+}
+
+model Golfer {
+  id            String      @id @default(uuid())
+  name          String
+  odds          Int
+  strokeScore   Int?
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  picks         PickGolfer[]
+}
+
+model Pick {
+  id              String       @id @default(uuid())
+  participantName String
+  submittedAt     DateTime     @default(now())
+  competitionId   String
+  competition     Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  golfers         PickGolfer[]
+}
+
+model PickGolfer {
+  pickId   String
+  golferId String
+  pick     Pick   @relation(fields: [pickId], references: [id], onDelete: Cascade)
+  golfer   Golfer @relation(fields: [golferId], references: [id], onDelete: Cascade)
+  @@id([pickId, golferId])
+}

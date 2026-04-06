@@ -1,6 +1,4 @@
-import fs from 'fs'
-import path from 'path'
-const DATA_DIR = path.join(process.cwd(), 'data')
+import { prisma } from './prisma'
 
 export interface User {
   id: string
@@ -9,53 +7,6 @@ export interface User {
   role: 'admin'
   createdAt: string
 }
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-  }
-}
-
-function ensureUsersFile() {
-  ensureDataDir()
-  const filePath = path.join(DATA_DIR, 'users.json')
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify([], null, 2))
-  }
-}
-
-// Simple per-file mutex using a promise chain
-const locks = new Map<string, Promise<void>>()
-
-async function withLock<T>(file: string, fn: () => T): Promise<T> {
-  const prev = locks.get(file) ?? Promise.resolve()
-  let resolve!: () => void
-  const next = new Promise<void>((r) => (resolve = r))
-  locks.set(file, prev.then(() => next))
-  await prev
-  try {
-    return fn()
-  } finally {
-    resolve()
-  }
-}
-
-export async function readUsers(): Promise<User[]> {
-  ensureUsersFile()
-  return withLock('users', () => {
-    const data = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf-8')
-    return JSON.parse(data) as User[]
-  })
-}
-
-export async function writeUsers(users: User[]): Promise<void> {
-  ensureUsersFile()
-  return withLock('users', () => {
-    fs.writeFileSync(path.join(DATA_DIR, 'users.json'), JSON.stringify(users, null, 2))
-  })
-}
-
-// ── Competitions ──────────────────────────────────────────────────────────────
 
 export interface Golfer {
   id: string
@@ -81,25 +32,69 @@ export interface Competition {
   createdAt: string
 }
 
-function ensureCompetitionsFile() {
-  ensureDataDir()
-  const filePath = path.join(DATA_DIR, 'competitions.json')
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify([], null, 2))
+const competitionInclude = {
+  golfers: true,
+  picks: { include: { golfers: true } },
+} as const
+
+function mapCompetition(c: {
+  id: string
+  name: string
+  status: string
+  cutLine: number | null
+  createdAt: Date
+  golfers: { id: string; name: string; odds: number; strokeScore: number | null }[]
+  picks: {
+    id: string
+    participantName: string
+    submittedAt: Date
+    golfers: { golferId: string }[]
+  }[]
+}): Competition {
+  return {
+    id: c.id,
+    name: c.name,
+    status: c.status as Competition['status'],
+    cutLine: c.cutLine ?? undefined,
+    createdAt: c.createdAt.toISOString(),
+    field: c.golfers.map((g) => ({
+      id: g.id,
+      name: g.name,
+      odds: g.odds,
+      strokeScore: g.strokeScore ?? undefined,
+    })),
+    picks: c.picks.map((p) => ({
+      id: p.id,
+      participantName: p.participantName,
+      submittedAt: p.submittedAt.toISOString(),
+      golferIds: p.golfers.map((pg) => pg.golferId),
+    })),
   }
 }
 
-export async function readCompetitions(): Promise<Competition[]> {
-  ensureCompetitionsFile()
-  return withLock('competitions', () => {
-    const data = fs.readFileSync(path.join(DATA_DIR, 'competitions.json'), 'utf-8')
-    return JSON.parse(data) as Competition[]
-  })
+export async function readUsers(): Promise<User[]> {
+  const users = await prisma.user.findMany()
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    passwordHash: u.passwordHash,
+    role: u.role as 'admin',
+    createdAt: u.createdAt.toISOString(),
+  }))
 }
 
-export async function writeCompetitions(competitions: Competition[]): Promise<void> {
-  ensureCompetitionsFile()
-  return withLock('competitions', () => {
-    fs.writeFileSync(path.join(DATA_DIR, 'competitions.json'), JSON.stringify(competitions, null, 2))
+export async function readCompetitions(): Promise<Competition[]> {
+  const competitions = await prisma.competition.findMany({
+    include: competitionInclude,
+    orderBy: { createdAt: 'desc' },
   })
+  return competitions.map(mapCompetition)
+}
+
+export async function readCompetitionById(id: string): Promise<Competition | null> {
+  const competition = await prisma.competition.findUnique({
+    where: { id },
+    include: competitionInclude,
+  })
+  return competition ? mapCompetition(competition) : null
 }

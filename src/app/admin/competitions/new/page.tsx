@@ -9,6 +9,11 @@ interface GolferRow {
   odds: string
 }
 
+interface Sport {
+  key: string
+  title: string
+}
+
 export default function NewCompetitionPage() {
   const router = useRouter()
   const [name, setName] = useState('')
@@ -19,6 +24,62 @@ export default function NewCompetitionPage() {
   ])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Odds loader state
+  const [sports, setSports] = useState<Sport[]>([])
+  const [sportsLoading, setSportsLoading] = useState(false)
+  const [sportsError, setSportsError] = useState('')
+  const [oddsLoading, setOddsLoading] = useState(false)
+  const [oddsError, setOddsError] = useState('')
+  const [showSports, setShowSports] = useState(false)
+  const [bookmaker, setBookmaker] = useState('')
+
+  async function handleLoadSports() {
+    setSportsError('')
+    setSportsLoading(true)
+    setShowSports(true)
+    try {
+      const res = await fetch('/api/odds')
+      const data = await res.json()
+      if (!res.ok) {
+        setSportsError(data.error || 'Failed to load tournaments')
+        return
+      }
+      if (data.length === 0) {
+        setSportsError('No active golf tournaments found')
+        return
+      }
+      setSports(data)
+    } catch {
+      setSportsError('Network error. Please try again.')
+    } finally {
+      setSportsLoading(false)
+    }
+  }
+
+  async function handleLoadOdds(sportKey: string, sportTitle: string) {
+    setOddsError('')
+    setOddsLoading(true)
+    try {
+      const res = await fetch(`/api/odds?sport=${encodeURIComponent(sportKey)}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setOddsError(data.error || 'Failed to load odds')
+        return
+      }
+      setGolfers(data.golfers.map((g: { name: string; odds: number }) => ({
+        name: g.name,
+        odds: String(g.odds),
+      })))
+      if (!name) setName(sportTitle)
+      setBookmaker(data.bookmaker)
+      setShowSports(false)
+    } catch {
+      setOddsError('Network error. Please try again.')
+    } finally {
+      setOddsLoading(false)
+    }
+  }
 
   function addGolfer() {
     setGolfers([...golfers, { name: '', odds: '' }])
@@ -88,6 +149,78 @@ export default function NewCompetitionPage() {
           </div>
 
           <div className="card-body">
+            {/* ── Odds loader ────────────────────────────── */}
+            <div className="odds-loader-box">
+              <div className="odds-loader-header">
+                <div>
+                  <strong>Load field from live odds</strong>
+                  <p className="hint" style={{ marginTop: '0.2rem' }}>
+                    Automatically import golfers and odds from a live tournament.
+                    {bookmaker && <> Loaded from <strong>{bookmaker}</strong>.</>}
+                  </p>
+                </div>
+                {!showSports && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleLoadSports}
+                    disabled={sportsLoading}
+                  >
+                    {sportsLoading ? 'Loading...' : 'Browse Tournaments'}
+                  </button>
+                )}
+              </div>
+
+              {showSports && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  {sportsError && (
+                    <p className="hint" style={{ color: '#e05252' }}>{sportsError}</p>
+                  )}
+                  {oddsError && (
+                    <p className="hint" style={{ color: '#e05252', marginTop: '0.4rem' }}>{oddsError}</p>
+                  )}
+                  {sportsLoading && (
+                    <p className="hint">Fetching tournaments...</p>
+                  )}
+                  {!sportsLoading && sports.length > 0 && (
+                    <>
+                      <p className="hint" style={{ marginBottom: '0.5rem' }}>
+                        Select a tournament to import its field and current betting odds:
+                      </p>
+                      <div className="sports-list">
+                        {sports.map((s) => (
+                          <button
+                            key={s.key}
+                            type="button"
+                            className="sport-option"
+                            onClick={() => handleLoadOdds(s.key, s.title)}
+                            disabled={oddsLoading}
+                          >
+                            <span>{s.title}</span>
+                            {oddsLoading ? (
+                              <span className="hint">Loading...</span>
+                            ) : (
+                              <span className="hint">Import →</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowSports(false)}
+                    style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <hr className="divider" />
+
             <form onSubmit={handleSubmit}>
               {error && <div className="alert alert-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
 
@@ -105,9 +238,14 @@ export default function NewCompetitionPage() {
               </div>
 
               <div className="form-group">
-                <label>Golfer Field</label>
+                <label>
+                  Golfer Field
+                  <span className="hint" style={{ marginLeft: '0.5rem', textTransform: 'none', fontWeight: 400 }}>
+                    ({golfers.filter((g) => g.name.trim()).length} golfers)
+                  </span>
+                </label>
                 <p className="hint" style={{ marginBottom: '0.75rem' }}>
-                  Enter each golfer and their odds (the X in X/1 — e.g. 14 for 14/1).
+                  Odds are the X in X/1 — e.g. 14 for 14/1.
                   Participants must pick 3 golfers with combined odds of at least 120.
                 </p>
 

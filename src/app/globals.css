@@ -557,3 +557,57 @@ body {
 .my-pick-odds { font-size: 0.8rem; color: var(--gray-600); margin-top: 0.25rem; }
 .my-pick-score { font-size: 0.8rem; color: var(--fairway); margin-top: 0.25rem; font-weight: 600; }
 .pick-cut-label { font-size: 0.78rem; color: #e05252; font-weight: 700; margin-top: 0.25rem; }
+
+/* ── Odds loader box ──────────────────────────────── */
+.odds-loader-box {
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-300);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.odds-loader-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.odds-loader-header strong {
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  color: var(--green-dark);
+}
+
+.sports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sport-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  background: var(--white);
+  border: 1.5px solid var(--gray-300);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: system-ui, sans-serif;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.sport-option:hover:not(:disabled) {
+  border-color: var(--fairway);
+  background: var(--green-pale);
+}
+
+.sport-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

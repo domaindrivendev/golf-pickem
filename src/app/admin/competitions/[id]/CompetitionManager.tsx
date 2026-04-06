@@ -293,7 +293,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
                     <td className="rank-cell">
                       {entry.eliminated ? '—' : isWinner ? '🏆' : i + 1}
                     </td>
-                    <td>{entry.pick.userEmail}</td>
+                    <td>{entry.pick.participantName}</td>
                     {entry.golfers.map((g, gi) => (
                       <td key={gi}>
                         {g.name}
@@ -332,7 +332,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 const combined = golfers.reduce((s, g) => s + g.odds, 0)
                 return (
                   <tr key={pick.id}>
-                    <td>{pick.userEmail}</td>
+                    <td>{pick.participantName}</td>
                     {golfers.map((g, i) => (
                       <td key={i}>{g.name} ({g.odds}/1)</td>
                     ))}

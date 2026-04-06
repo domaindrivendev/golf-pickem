@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
 import { readCompetitions, writeCompetitions } from '@/lib/storage'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -7,14 +6,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession()
-  if (!session || (session.role !== 'participant' && session.role !== 'admin')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   const body = await req.json()
-  const { golferIds } = body as { golferIds: string[] }
+  const { participantName, golferIds } = body as { participantName: string; golferIds: string[] }
 
+  if (!participantName?.trim()) {
+    return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+  }
   if (!Array.isArray(golferIds) || golferIds.length !== 3) {
     return NextResponse.json({ error: 'Must pick exactly 3 golfers' }, { status: 400 })
   }
@@ -30,8 +27,9 @@ export async function POST(
     return NextResponse.json({ error: 'Competition is not open for picks' }, { status: 400 })
   }
 
-  if (competition.picks.some((p) => p.userId === session.sub)) {
-    return NextResponse.json({ error: 'You have already submitted picks' }, { status: 400 })
+  const name = participantName.trim()
+  if (competition.picks.some((p) => p.participantName.toLowerCase() === name.toLowerCase())) {
+    return NextResponse.json({ error: `Picks already submitted for "${name}"` }, { status: 400 })
   }
 
   const golfers = golferIds.map((id) => competition.field.find((g) => g.id === id))
@@ -49,17 +47,10 @@ export async function POST(
 
   competition.picks = [
     ...competition.picks,
-    {
-      id: uuidv4(),
-      userId: session.sub,
-      userEmail: session.email,
-      golferIds,
-      submittedAt: new Date().toISOString(),
-    },
+    { id: uuidv4(), participantName: name, golferIds, submittedAt: new Date().toISOString() },
   ]
 
   competitions[idx] = competition
   await writeCompetitions(competitions)
-
   return NextResponse.json({ ok: true }, { status: 201 })
 }

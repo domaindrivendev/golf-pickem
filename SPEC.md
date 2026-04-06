@@ -2,10 +2,8 @@
 A web app for managing golf pickem competitions
 
 ## Authentication
-- Users register and sign-in via magic links
-- All signed-in users can submit their picks and participate in competitions
-- Admins will also be able to create and manage competitions
-- richie.morris@hotmail.com is seeded as an initial admin
+- Admins will be required to login via username and password
+- Participants don't need to login - they can just submit their name along with their picks
 
 ## Workflow
 All competitions will have the following lifecycle:

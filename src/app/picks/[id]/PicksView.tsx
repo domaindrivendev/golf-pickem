@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Competition, Pick } from '@/lib/storage'
+import { Competition } from '@/lib/storage'
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open for Picks',
@@ -10,7 +10,9 @@ const STATUS_LABELS: Record<string, string> = {
   complete: 'Complete',
 }
 
-function computeLeaderboard(competition: Competition, userId: string) {
+const NAME_KEY = 'golf_pickem_name'
+
+function computeLeaderboard(competition: Competition) {
   return competition.picks
     .map((pick) => {
       const golfers = pick.golferIds.map((id) => competition.field.find((g) => g.id === id)!)
@@ -18,8 +20,7 @@ function computeLeaderboard(competition: Competition, userId: string) {
       const eliminated =
         competition.cutLine !== undefined &&
         golfers.some((g) => g.strokeScore !== undefined && g.strokeScore > competition.cutLine!)
-      const isMe = pick.userId === userId
-      return { pick, golfers, totalScore, eliminated, isMe }
+      return { pick, golfers, totalScore, eliminated }
     })
     .sort((a, b) => {
       if (a.eliminated && !b.eliminated) return 1
@@ -28,24 +29,29 @@ function computeLeaderboard(competition: Competition, userId: string) {
     })
 }
 
-export default function PicksView({
-  competition,
-  myPick,
-  userId,
-}: {
-  competition: Competition
-  myPick: Pick | null
-  userId: string
-}) {
+export default function PicksView({ competition }: { competition: Competition }) {
   const router = useRouter()
+  const [participantName, setParticipantName] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Restore saved name from previous visit
+  useEffect(() => {
+    const saved = localStorage.getItem(NAME_KEY)
+    if (saved) setParticipantName(saved)
+  }, [])
 
   const combinedOdds = Array.from(selected).reduce((sum, id) => {
     const g = competition.field.find((g) => g.id === id)
     return sum + (g?.odds ?? 0)
   }, 0)
+
+  const myPick = participantName.trim()
+    ? competition.picks.find(
+        (p) => p.participantName.toLowerCase() === participantName.trim().toLowerCase()
+      )
+    : null
 
   function toggleGolfer(id: string) {
     const next = new Set(selected)
@@ -60,10 +66,9 @@ export default function PicksView({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (selected.size !== 3) {
-      setError('Select exactly 3 golfers')
-      return
-    }
+    const name = participantName.trim()
+    if (!name) { setError('Enter your name'); return }
+    if (selected.size !== 3) { setError('Select exactly 3 golfers'); return }
     if (combinedOdds < 120) {
       setError(`Combined odds must be at least 120 (yours: ${combinedOdds})`)
       return
@@ -73,13 +78,11 @@ export default function PicksView({
       const res = await fetch(`/api/competitions/${competition.id}/picks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ golferIds: Array.from(selected) }),
+        body: JSON.stringify({ participantName: name, golferIds: Array.from(selected) }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Failed to submit picks')
-        return
-      }
+      if (!res.ok) { setError(data.error || 'Failed to submit picks'); return }
+      localStorage.setItem(NAME_KEY, name)
       router.refresh()
     } finally {
       setLoading(false)
@@ -87,8 +90,7 @@ export default function PicksView({
   }
 
   const isLiveOrComplete = competition.status === 'live' || competition.status === 'complete'
-  const leaderboard = isLiveOrComplete ? computeLeaderboard(competition, userId) : []
-  const myEntry = leaderboard.find((e) => e.isMe)
+  const leaderboard = isLiveOrComplete ? computeLeaderboard(competition) : []
   const winner = competition.status === 'complete' ? leaderboard.find((e) => !e.eliminated) : null
 
   return (
@@ -103,16 +105,128 @@ export default function PicksView({
       </div>
 
       <div className="card-body">
-        {/* ── Winner announcement ─────────────────────── */}
-        {competition.status === 'complete' && winner && (
+        {/* ── Winner announcement ───────────────────── */}
+        {winner && (
           <div className="alert alert-success" style={{ marginBottom: '1.5rem', fontSize: '1rem' }}>
-            🏆 <strong>Winner: {winner.pick.userEmail}</strong> with a total of{' '}
+            🏆 <strong>Winner: {winner.pick.participantName}</strong> with a total of{' '}
             {winner.totalScore} strokes
           </div>
         )}
 
-        {/* ── My picks / submission ────────────────────── */}
-        {myPick ? (
+        {/* ── Pick submission (open only) ────────────── */}
+        {competition.status === 'open' && (
+          <>
+            <h2 className="section-heading">Submit Your Picks</h2>
+
+            {myPick ? (
+              <>
+                <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
+                  ✓ Picks submitted for <strong>{myPick.participantName}</strong>
+                </div>
+                <div className="my-picks-grid">
+                  {myPick.golferIds.map((id) => {
+                    const g = competition.field.find((gf) => gf.id === id)!
+                    return (
+                      <div key={id} className="my-pick-card">
+                        <div className="my-pick-name">{g.name}</div>
+                        <div className="my-pick-odds">{g.odds}/1</div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="hint" style={{ marginTop: '0.75rem' }}>
+                  Not you? Enter a different name below to submit separate picks.
+                </p>
+              </>
+            ) : null}
+
+            <form onSubmit={handleSubmit} style={{ marginTop: myPick ? '1.5rem' : 0 }}>
+              <div className="form-group">
+                <label htmlFor="participant-name">Your name</label>
+                <input
+                  id="participant-name"
+                  type="text"
+                  className="text-input"
+                  value={participantName}
+                  onChange={(e) => setParticipantName(e.target.value)}
+                  placeholder="e.g. John Smith"
+                  autoComplete="name"
+                />
+              </div>
+
+              {!myPick && (
+                <>
+                  <p className="hint" style={{ marginBottom: '0.75rem' }}>
+                    Choose 3 golfers. Their combined odds must be at least 120/1.
+                  </p>
+
+                  <div
+                    className={`odds-counter ${
+                      selected.size === 3 && combinedOdds >= 120
+                        ? 'valid'
+                        : selected.size === 3
+                        ? 'invalid'
+                        : ''
+                    }`}
+                    style={{ marginBottom: '1rem' }}
+                  >
+                    Selected: {selected.size}/3 golfers
+                    {selected.size > 0 && ` · Combined odds: ${combinedOdds}/1`}
+                    {selected.size === 3 && combinedOdds < 120 && ' (need at least 120/1)'}
+                  </div>
+
+                  {competition.field.map((g) => {
+                    const isSelected = selected.has(g.id)
+                    const isDisabled = !isSelected && selected.size === 3
+                    return (
+                      <div
+                        key={g.id}
+                        className={`pick-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                        onClick={() => !isDisabled && toggleGolfer(g.id)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleGolfer(g.id)}
+                          disabled={isDisabled}
+                        />
+                        <span className="pick-name">{g.name}</span>
+                        <span className="pick-odds">{g.odds}/1</span>
+                      </div>
+                    )
+                  })}
+
+                  {error && (
+                    <div className="alert alert-error" style={{ marginTop: '1rem' }}>{error}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={loading || selected.size !== 3 || combinedOdds < 120}
+                    style={{ width: '100%', marginTop: '1.25rem' }}
+                  >
+                    {loading ? 'Submitting...' : 'Submit Picks'}
+                  </button>
+                </>
+              )}
+
+              {myPick && (
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  disabled={loading}
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  Check picks for this name
+                </button>
+              )}
+            </form>
+          </>
+        )}
+
+        {/* ── My picks summary (live / complete) ───────── */}
+        {isLiveOrComplete && participantName.trim() && myPick && (
           <>
             <h2 className="section-heading">Your Picks</h2>
             <div className="my-picks-grid">
@@ -134,77 +248,21 @@ export default function PicksView({
                 )
               })}
             </div>
-            {myEntry && isLiveOrComplete && (
-              <div className={`odds-counter ${myEntry.eliminated ? 'invalid' : 'valid'}`} style={{ marginTop: '1rem' }}>
-                {myEntry.eliminated
-                  ? '✕ You have been eliminated (one or more picks did not make the cut)'
-                  : `Your total score: ${myEntry.golfers.every((g) => g.strokeScore !== undefined) ? myEntry.totalScore : '—'} strokes`}
-              </div>
-            )}
-          </>
-        ) : competition.status === 'open' ? (
-          <>
-            <h2 className="section-heading">Submit Your Picks</h2>
-            <p className="hint" style={{ marginBottom: '1rem' }}>
-              Choose 3 golfers. Their combined odds must be at least 120/1.
-            </p>
-
-            <div
-              className={`odds-counter ${
-                selected.size === 3 && combinedOdds >= 120
-                  ? 'valid'
-                  : selected.size === 3
-                  ? 'invalid'
-                  : ''
-              }`}
-              style={{ marginBottom: '1rem' }}
-            >
-              Selected: {selected.size}/3 golfers
-              {selected.size > 0 && ` · Combined odds: ${combinedOdds}/1`}
-              {selected.size === 3 && combinedOdds < 120 && ' (need at least 120/1)'}
+            <div className="form-group" style={{ marginTop: '0.75rem' }}>
+              <label htmlFor="name-check">Not you?</label>
+              <input
+                id="name-check"
+                type="text"
+                className="text-input"
+                value={participantName}
+                onChange={(e) => setParticipantName(e.target.value)}
+                placeholder="Enter a name to find picks"
+              />
             </div>
-
-            <form onSubmit={handleSubmit}>
-              {competition.field.map((g) => {
-                const isSelected = selected.has(g.id)
-                const isDisabled = !isSelected && selected.size === 3
-                return (
-                  <div
-                    key={g.id}
-                    className={`pick-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                    onClick={() => !isDisabled && toggleGolfer(g.id)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleGolfer(g.id)}
-                      disabled={isDisabled}
-                    />
-                    <span className="pick-name">{g.name}</span>
-                    <span className="pick-odds">{g.odds}/1</span>
-                  </div>
-                )
-              })}
-
-              {error && (
-                <div className="alert alert-error" style={{ marginTop: '1rem' }}>
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={loading || selected.size !== 3 || combinedOdds < 120}
-                style={{ width: '100%', marginTop: '1.25rem' }}
-              >
-                {loading ? 'Submitting...' : 'Submit Picks'}
-              </button>
-            </form>
           </>
-        ) : null}
+        )}
 
-        {/* ── Leaderboard (live / complete) ────────────── */}
+        {/* ── Leaderboard (live / complete) ─────────────── */}
         {isLiveOrComplete && (
           <>
             <hr className="divider" />
@@ -231,22 +289,23 @@ export default function PicksView({
                 <tbody>
                   {leaderboard.map((entry, i) => {
                     const isWinner = competition.status === 'complete' && i === 0 && !entry.eliminated
+                    const isMe =
+                      participantName.trim() &&
+                      entry.pick.participantName.toLowerCase() === participantName.trim().toLowerCase()
                     return (
                       <tr
                         key={entry.pick.id}
                         className={[
                           entry.eliminated ? 'row-eliminated' : '',
-                          entry.isMe ? 'row-me' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
+                          isMe ? 'row-me' : '',
+                        ].filter(Boolean).join(' ')}
                       >
                         <td className="rank-cell">
                           {entry.eliminated ? '—' : isWinner ? '🏆' : i + 1}
                         </td>
                         <td>
-                          {entry.pick.userEmail}
-                          {entry.isMe && (
+                          {entry.pick.participantName}
+                          {isMe && (
                             <span style={{ marginLeft: '0.4rem', fontSize: '0.78rem', color: 'var(--green-mid)' }}>
                               (you)
                             </span>

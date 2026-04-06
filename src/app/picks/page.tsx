@@ -1,10 +1,8 @@
 import { getSession } from '@/lib/auth'
 import { readCompetitions } from '@/lib/storage'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'Draft',
   open: 'Open for Picks',
   live: 'Live',
   complete: 'Complete',
@@ -12,8 +10,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default async function PicksPage() {
   const session = await getSession()
-  if (!session || (session.role !== 'participant' && session.role !== 'admin')) redirect('/auth/signin')
-
   const competitions = await readCompetitions()
   const visible = competitions.filter((c) => c.status !== 'draft')
 
@@ -22,13 +18,17 @@ export default async function PicksPage() {
       <header className="site-header">
         <span className="logo">⛳ Golf Pickem</span>
         <div className="user-info">
-          <span>{session.email}</span>
-          {session.role === 'admin' && (
-            <Link href="/admin" className="btn btn-ghost">Admin</Link>
+          {session?.role === 'admin' ? (
+            <>
+              <span>{session.email}</span>
+              <Link href="/admin" className="btn btn-ghost">Admin</Link>
+              <form action="/api/auth/signout" method="POST">
+                <button type="submit" className="btn btn-ghost">Sign out</button>
+              </form>
+            </>
+          ) : (
+            <Link href="/auth/signin" className="btn btn-ghost">Admin sign in</Link>
           )}
-          <form action="/api/auth/signout" method="POST">
-            <button type="submit" className="btn btn-ghost">Sign out</button>
-          </form>
         </div>
       </header>
 
@@ -48,25 +48,21 @@ export default async function PicksPage() {
               </div>
             ) : (
               <div>
-                {visible.map((c) => {
-                  const myPick = c.picks.find((p) => p.userId === session.sub)
-                  return (
-                    <Link key={c.id} href={`/picks/${c.id}`} className="competition-card-link">
-                      <div className="competition-card">
-                        <div className="competition-card-main">
-                          <strong>{c.name}</strong>
-                          <span className={`status-badge status-${c.status}`}>
-                            {STATUS_LABELS[c.status]}
-                          </span>
-                        </div>
-                        <div className="competition-card-meta">
-                          {c.field.length} golfers in field
-                          {myPick ? ' · Picks submitted ✓' : c.status === 'open' ? ' · Picks needed' : ''}
-                        </div>
+                {visible.map((c) => (
+                  <Link key={c.id} href={`/picks/${c.id}`} className="competition-card-link">
+                    <div className="competition-card">
+                      <div className="competition-card-main">
+                        <strong>{c.name}</strong>
+                        <span className={`status-badge status-${c.status}`}>
+                          {STATUS_LABELS[c.status]}
+                        </span>
                       </div>
-                    </Link>
-                  )
-                })}
+                      <div className="competition-card-meta">
+                        {c.field.length} golfers · {c.picks.length} picks submitted
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>

@@ -8,23 +8,17 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('session')?.value
   const session = token ? await verifyJwt(token) : null
 
-  // Redirect authenticated users away from sign-in
+  // Redirect authenticated admins away from sign-in
   if (pathname.startsWith('/auth/signin')) {
-    if (session) {
-      return NextResponse.redirect(new URL(session.role === 'admin' ? '/admin' : '/picks', request.url))
+    if (session?.role === 'admin') {
+      return NextResponse.redirect(new URL('/admin', request.url))
     }
     return NextResponse.next()
   }
 
-  // Protect /admin and /picks
-  if (pathname.startsWith('/admin') || pathname.startsWith('/picks')) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/auth/signin', request.url))
-    }
-    if (pathname.startsWith('/admin') && session.role !== 'admin') {
-      return NextResponse.redirect(new URL('/picks', request.url))
-    }
-    if (pathname.startsWith('/picks') && session.role !== 'participant' && session.role !== 'admin') {
+  // Protect /admin — must be a signed-in admin
+  if (pathname.startsWith('/admin')) {
+    if (!session || session.role !== 'admin') {
       return NextResponse.redirect(new URL('/auth/signin', request.url))
     }
   }
@@ -33,5 +27,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/auth/signin', '/admin/:path*', '/picks/:path*'],
+  matcher: ['/auth/signin', '/admin/:path*'],
 }

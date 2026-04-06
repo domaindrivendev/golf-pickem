@@ -1,28 +1,13 @@
 import fs from 'fs'
 import path from 'path'
-import { v4 as uuidv4 } from 'uuid'
-
 const DATA_DIR = path.join(process.cwd(), 'data')
 
 export interface User {
   id: string
   email: string
-  role: 'admin' | 'participant'
+  passwordHash: string
+  role: 'admin'
   createdAt: string
-}
-
-export interface MagicToken {
-  token: string
-  email: string
-  expiresAt: string
-  used: boolean
-}
-
-const SEED_ADMIN: User = {
-  id: uuidv4(),
-  email: 'richie.morris@hotmail.com',
-  role: 'admin',
-  createdAt: new Date().toISOString(),
 }
 
 function ensureDataDir() {
@@ -34,14 +19,6 @@ function ensureDataDir() {
 function ensureUsersFile() {
   ensureDataDir()
   const filePath = path.join(DATA_DIR, 'users.json')
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify([SEED_ADMIN], null, 2))
-  }
-}
-
-function ensureTokensFile() {
-  ensureDataDir()
-  const filePath = path.join(DATA_DIR, 'magic-tokens.json')
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, JSON.stringify([], null, 2))
   }
@@ -78,21 +55,6 @@ export async function writeUsers(users: User[]): Promise<void> {
   })
 }
 
-export async function readTokens(): Promise<MagicToken[]> {
-  ensureTokensFile()
-  return withLock('tokens', () => {
-    const data = fs.readFileSync(path.join(DATA_DIR, 'magic-tokens.json'), 'utf-8')
-    return JSON.parse(data) as MagicToken[]
-  })
-}
-
-export async function writeTokens(tokens: MagicToken[]): Promise<void> {
-  ensureTokensFile()
-  return withLock('tokens', () => {
-    fs.writeFileSync(path.join(DATA_DIR, 'magic-tokens.json'), JSON.stringify(tokens, null, 2))
-  })
-}
-
 // ── Competitions ──────────────────────────────────────────────────────────────
 
 export interface Golfer {
@@ -104,8 +66,7 @@ export interface Golfer {
 
 export interface Pick {
   id: string
-  userId: string
-  userEmail: string
+  participantName: string
   golferIds: string[]
   submittedAt: string
 }

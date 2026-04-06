@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function SignInPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
+  const [password, setPassword] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [error, setError] = useState('')
 
   async function handleSubmit(e: FormEvent) {
@@ -13,10 +16,10 @@ export default function SignInPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/auth/magic-link', {
+      const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password }),
       })
 
       if (!res.ok) {
@@ -24,7 +27,7 @@ export default function SignInPage() {
         throw new Error(data.error ?? 'Something went wrong')
       }
 
-      setStatus('sent')
+      router.push('/admin')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setStatus('error')
@@ -40,43 +43,52 @@ export default function SignInPage() {
       <div className="page-wrapper">
         <div className="card">
           <div className="card-header">
-            <h1>Sign In</h1>
-            <p>Enter your email to receive a sign-in link</p>
+            <h1>Admin Sign In</h1>
+            <p>Enter your credentials to manage competitions</p>
           </div>
 
           <div className="card-body">
-            {status === 'sent' ? (
-              <>
-                <div className="alert alert-success">
-                  Check your email — we sent a sign-in link to <strong>{email}</strong>.
-                </div>
-                <p className="hint">
-                  In local dev, check <code>tmp/emails.txt</code> in the project root.
-                </p>
-              </>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label htmlFor="email">Email address</label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@example.com"
-                  />
-                </div>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  className="text-input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="admin@example.com"
+                  autoComplete="email"
+                />
+              </div>
 
-                {status === 'error' && (
-                  <div className="alert alert-error">{error}</div>
-                )}
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  className="text-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
 
-                <button type="submit" className="btn btn-primary" disabled={status === 'loading'}>
-                  {status === 'loading' ? 'Sending…' : 'Send sign-in link'}
-                </button>
-              </form>
-            )}
+              {status === 'error' && (
+                <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={status === 'loading'}
+                style={{ width: '100%' }}
+              >
+                {status === 'loading' ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
 
             <div className="hole-dots">
               {Array.from({ length: 9 }).map((_, i) => <span key={i} />)}

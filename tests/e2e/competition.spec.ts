@@ -54,7 +54,7 @@ async function apiSetCutline(page: Page, id: string, cutLine: number) {
 
 test('create draft competition', async ({ page }) => {
   await signIn(page)
-  await page.goto('/admin/competitions/new')
+  await page.goto('/admin/competitions/foobar')
   await page.fill('#comp-name', 'Masters 2026')
 
   await page.locator('.golfer-input-name').nth(0).fill('Tiger Woods')

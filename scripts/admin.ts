@@ -2,11 +2,10 @@ import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
-const ADMIN_EMAIL = 'richie.morris@hotmail.com'
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+const [ADMIN_EMAIL, ADMIN_PASSWORD] = process.argv.slice(2)
 
 async function main() {
-  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required')
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('Usage: seed.ts <email> <password>')
   const passwordHash = bcrypt.hashSync(ADMIN_PASSWORD, 10)
 
   await prisma.user.upsert({
@@ -20,10 +19,6 @@ async function main() {
   })
 
   console.log(`Seeded admin user: ${ADMIN_EMAIL}`)
-
-  if (ADMIN_PASSWORD === 'admin') {
-    console.log(`⚠  Using default password "admin" — set ADMIN_PASSWORD in .env.local to change it`)
-  }
 }
 
 main()

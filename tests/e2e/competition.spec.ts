@@ -23,31 +23,36 @@ async function apiCreate(page: Page): Promise<Competition> {
       ],
     },
   })
+  await expect(res).toBeOK()
   return res.json()
 }
 
 async function apiAdvance(page: Page, id: string) {
-  await page.request.patch(`/api/competitions/${id}`, {
+  const res = await page.request.patch(`/api/competitions/${id}`, {
     data: { action: 'advance' },
   })
+  await expect(res).toBeOK()
 }
 
 async function apiSubmitPick(page: Page, id: string, golferIds: string[]) {
-  await page.request.post(`/api/competitions/${id}/picks`, {
+  const res = await page.request.post(`/api/competitions/${id}/picks`, {
     data: { participantName: 'Alice', golferIds },
   })
+  await expect(res).toBeOK()
 }
 
 async function apiEnterScores(page: Page, id: string, scores: Record<string, string>) {
-  await page.request.patch(`/api/competitions/${id}/golfers`, {
+  const res = await page.request.patch(`/api/competitions/${id}/golfers`, {
     data: { scores },
   })
+  await expect(res).toBeOK()
 }
 
 async function apiSetCutline(page: Page, id: string, cutLine: number) {
-  await page.request.patch(`/api/competitions/${id}`, {
+  const res = await page.request.patch(`/api/competitions/${id}`, {
     data: { action: 'setCutLine', cutLine },
   })
+  await expect(res).toBeOK()
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────

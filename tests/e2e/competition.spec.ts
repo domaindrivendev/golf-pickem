@@ -144,6 +144,41 @@ test('set cutline — one golfer cut, one in', async ({ page }) => {
   await expect(page.locator('tr', { hasText: 'Rory McIlroy' }).getByText('✓ In')).toBeVisible()
 })
 
+test('import live scores reorders field by score', async ({ page }) => {
+  await signIn(page)
+  const { id, field } = (await apiCreate(page)) as Competition & { field: Array<{ id: string; name: string }> }
+  await apiAdvance(page, id) // draft → open
+  await apiAdvance(page, id) // open → live
+
+  // Intercept the import-scores API call and return a mocked leaderboard response
+  // Rory: -3, Jon: -1, Tiger: +2 → expected order: Rory, Jon, Tiger
+  await page.route(`/api/competitions/${id}/import-scores`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        tournament: 'Masters Tournament',
+        matched: [
+          { id: field[0].id, name: 'Tiger Woods', score: 2 },
+          { id: field[1].id, name: 'Rory McIlroy', score: -3 },
+          { id: field[2].id, name: 'Jon Rahm', score: -1 },
+        ],
+        unmatched: [],
+      }),
+    })
+  })
+
+  await page.goto(`/admin/competitions/${id}`)
+  await page.getByRole('button', { name: 'Import Live Scores' }).click()
+  await expect(page.getByText('Imported 3/3 golfers.')).toBeVisible()
+
+  // Verify field rows are sorted by score ascending (Rory -3, Jon -1, Tiger +2)
+  const rows = page.locator('table').first().locator('tbody tr')
+  await expect(rows.nth(0).locator('td').first()).toHaveText('Rory McIlroy')
+  await expect(rows.nth(1).locator('td').first()).toHaveText('Jon Rahm')
+  await expect(rows.nth(2).locator('td').first()).toHaveText('Tiger Woods')
+})
+
 test('advance to complete and verify winner', async ({ page }) => {
   await signIn(page)
   const { id, field } = await apiCreate(page)

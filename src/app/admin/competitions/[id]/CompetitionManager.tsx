@@ -203,7 +203,13 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 </tr>
               </thead>
               <tbody>
-                {competition.field.map((g) => {
+                {[...competition.field]
+                  .sort((a, b) => {
+                    const sa = scores[a.id] !== '' ? Number(scores[a.id]) : Infinity
+                    const sb = scores[b.id] !== '' ? Number(scores[b.id]) : Infinity
+                    return sa - sb
+                  })
+                  .map((g) => {
                   const isCut =
                     competition.cutLine !== undefined &&
                     g.strokeScore !== undefined &&
@@ -253,8 +259,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={handleImportScores}
-                disabled={importLoading || !competition.sportKey}
-                title={!competition.sportKey ? 'Link a tournament below to enable' : undefined}
+                disabled={importLoading}
               >
                 {importLoading ? 'Importing...' : 'Import Live Scores'}
               </button>

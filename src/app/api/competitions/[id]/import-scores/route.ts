@@ -83,9 +83,6 @@ export async function POST(
   const matched: Array<{ id: string; name: string; score: number }> = []
   const unmatched: Array<{ competition: string; espn: string | null }> = []
 
-  // Track which ESPN names were consumed so we can surface the leftovers
-  const matchedEspnKeys = new Set<string>()
-
   for (const golfer of competition.golfers) {
     const exactKey = golfer.name.trim().toLowerCase()
     const normalKey = normalizeName(golfer.name)
@@ -93,7 +90,6 @@ export async function POST(
     const score = exact !== undefined ? exact : normalMap.get(normalKey)
     if (score !== undefined) {
       matched.push({ id: golfer.id, name: golfer.name, score })
-      matchedEspnKeys.add(exact !== undefined ? exactKey : normalKey)
     } else {
       // Find the closest ESPN name for diagnosis — first word (last name) match
       const lastName = normalKey.split(' ').at(-1) ?? ''

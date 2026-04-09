@@ -152,7 +152,7 @@ test('import live scores reorders field by score', async ({ page }) => {
 
   // Intercept the import-scores API call and return a mocked leaderboard response
   // Rory: -3, Jon: -1, Tiger: +2 → expected order: Rory, Jon, Tiger
-  await page.route(`/api/competitions/${id}/import-scores`, async (route) => {
+  await page.route(`**/api/competitions/${id}/import-scores`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

@@ -7,7 +7,7 @@ export default async function globalSetup() {
     const passwordHash = await bcrypt.hash('admin', 10)
     await prisma.user.upsert({
       where: { email: 'admin@example.com' },
-      update: { passwordHash },
+      update: { passwordHash, role: 'admin' },
       create: { email: 'admin@example.com', passwordHash, role: 'admin' },
     })
   } finally {

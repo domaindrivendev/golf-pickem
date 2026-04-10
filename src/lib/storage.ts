@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 
 export interface User {
@@ -39,22 +40,9 @@ const competitionInclude = {
   picks: { include: { golfers: true } },
 } as const
 
-function mapCompetition(c: {
-  id: string
-  name: string
-  status: string
-  cutLine: number | null
-  sportKey: string | null
-  createdAt: Date
-  scoresUpdatedAt: Date | null
-  golfers: { id: string; name: string; odds: number; strokeScore: number | null }[]
-  picks: {
-    id: string
-    participantName: string
-    submittedAt: Date
-    golfers: { golferId: string }[]
-  }[]
-}): Competition {
+type CompetitionRow = Prisma.CompetitionGetPayload<{ include: typeof competitionInclude }>
+
+function mapCompetition(c: CompetitionRow): Competition {
   return {
     id: c.id,
     name: c.name,

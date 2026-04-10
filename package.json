@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "prisma": "prisma",
     "test": "vitest run",
@@ -15,9 +15,7 @@
     "db:start:test": "docker compose up -d db_test",
     "db:stop": "docker compose down",
     "db:reset": "prisma migrate reset --force",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:prod": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:migrate": "prisma migrate dev"
   },
   "license": "ISC",
   "dependencies": {

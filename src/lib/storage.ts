@@ -31,6 +31,7 @@ export interface Competition {
   cutLine?: number
   sportKey?: string
   createdAt: string
+  scoresUpdatedAt?: string
 }
 
 const competitionInclude = {
@@ -45,6 +46,7 @@ function mapCompetition(c: {
   cutLine: number | null
   sportKey: string | null
   createdAt: Date
+  scoresUpdatedAt: Date | null
   golfers: { id: string; name: string; odds: number; strokeScore: number | null }[]
   picks: {
     id: string
@@ -60,6 +62,7 @@ function mapCompetition(c: {
     cutLine: c.cutLine ?? undefined,
     sportKey: c.sportKey ?? undefined,
     createdAt: c.createdAt.toISOString(),
+    scoresUpdatedAt: c.scoresUpdatedAt?.toISOString() ?? undefined,
     field: c.golfers.map((g) => ({
       id: g.id,
       name: g.name,

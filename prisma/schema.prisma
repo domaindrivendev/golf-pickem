@@ -16,14 +16,15 @@ model User {
 }
 
 model Competition {
-  id        String   @id @default(uuid())
-  name      String
-  status    String   @default("draft")
-  cutLine   Int?
-  sportKey  String?
-  createdAt DateTime @default(now())
-  golfers   Golfer[]
-  picks     Pick[]
+  id              String    @id @default(uuid())
+  name            String
+  status          String    @default("draft")
+  cutLine         Int?
+  sportKey        String?
+  createdAt       DateTime  @default(now())
+  scoresUpdatedAt DateTime?
+  golfers         Golfer[]
+  picks           Pick[]
 }
 
 model Golfer {

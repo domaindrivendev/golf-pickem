@@ -36,6 +36,11 @@ export async function PATCH(
       })
   )
 
+  await prisma.competition.update({
+    where: { id: params.id },
+    data: { scoresUpdatedAt: new Date() },
+  })
+
   const updated = await readCompetitionById(params.id)
   return NextResponse.json(updated)
 }

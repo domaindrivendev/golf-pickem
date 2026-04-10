@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Competition } from '@/lib/storage'
+import { EspnGolfer, EspnScoreResult } from '@/lib/espn'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -36,25 +37,22 @@ function computeLeaderboard(competition: Competition) {
 
 export default function CompetitionManager({ competition }: { competition: Competition }) {
   const router = useRouter()
-  const initialScores = Object.fromEntries(
-    competition.field.map((g) => [g.id, g.strokeScore !== undefined ? String(g.strokeScore) : ''])
-  )
-  const [scores, setScores] = useState<Record<string, string>>(initialScores)
-  const [savedScores, setSavedScores] = useState<Record<string, string>>(initialScores)
   const [cutLine, setCutLine] = useState(
     competition.cutLine !== undefined ? String(competition.cutLine) : ''
   )
   const [advanceLoading, setAdvanceLoading] = useState(false)
-  const [scoresLoading, setScoresLoading] = useState(false)
   const [cutLoading, setCutLoading] = useState(false)
   const [advanceError, setAdvanceError] = useState('')
-  const [scoresMsg, setScoresMsg] = useState('')
   const [cutMsg, setCutMsg] = useState('')
 
-  // Import live scores state
-  const [importLoading, setImportLoading] = useState(false)
-  const [importMsg, setImportMsg] = useState('')
-  const [unmatchedNames, setUnmatchedNames] = useState<Set<string>>(new Set())
+  // ESPN name testing
+  const [espnTestLoading, setEspnTestLoading] = useState(false)
+  const [espnTestError, setEspnTestError] = useState('')
+  const [espnResult, setEspnResult] = useState<EspnScoreResult | null>(null)
+
+  // Inline name editing
+  const [editingName, setEditingName] = useState<{ golferId: string; value: string } | null>(null)
+  const [nameSaveLoading, setNameSaveLoading] = useState(false)
 
   async function handleAdvance() {
     const nextLabel = NEXT_STATUS_LABELS[competition.status]
@@ -75,29 +73,6 @@ export default function CompetitionManager({ competition }: { competition: Compe
       router.refresh()
     } finally {
       setAdvanceLoading(false)
-    }
-  }
-
-  async function handleSaveScores(e: React.FormEvent) {
-    e.preventDefault()
-    setScoresMsg('')
-    setScoresLoading(true)
-    try {
-      const res = await fetch(`/api/competitions/${competition.id}/golfers`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scores }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        setScoresMsg(data.error || 'Failed to save scores')
-        return
-      }
-      setScoresMsg('Scores saved.')
-      setSavedScores({ ...scores })
-      router.refresh()
-    } finally {
-      setScoresLoading(false)
     }
   }
 
@@ -123,42 +98,48 @@ export default function CompetitionManager({ competition }: { competition: Compe
     }
   }
 
-  async function handleImportScores() {
-    setImportMsg('')
-    setUnmatchedNames(new Set())
-    setImportLoading(true)
+  async function handleTestEspnNames() {
+    setEspnTestError('')
+    setEspnResult(null)
+    setEspnTestLoading(true)
     try {
-      const res = await fetch(`/api/competitions/${competition.id}/import-scores`, {
-        method: 'POST',
-      })
+      const res = await fetch(`/api/competitions/${competition.id}/import-scores`)
       const data = await res.json()
       if (!res.ok) {
-        setImportMsg(data.error || 'Failed to import scores')
+        setEspnTestError(data.error || 'Failed to fetch ESPN data')
         return
       }
-      const { matched, unmatched } = data as {
-        matched: Array<{ id: string; name: string; score: number }>
-        unmatched: Array<{ competition: string; espn: string | null }>
-      }
-      setUnmatchedNames(new Set(unmatched.map((u) => u.competition)))
-      setImportMsg(
-        `Imported ${matched.length}/${matched.length + unmatched.length} golfers.` +
-        (unmatched.length > 0 ? ` ${unmatched.length} not matched.` : '')
-      )
-      // Update local score state from imported values
-      setScores((prev) => {
-        const updated = { ...prev }
-        for (const m of matched) {
-          updated[m.id] = String(m.score)
-        }
-        setSavedScores(updated)
-        return updated
-      })
-      router.refresh()
+      setEspnResult(data as EspnScoreResult)
     } finally {
-      setImportLoading(false)
+      setEspnTestLoading(false)
     }
   }
+
+  async function handleSaveName(golferId: string, name: string) {
+    setNameSaveLoading(true)
+    try {
+      const res = await fetch(`/api/competitions/${competition.id}/golfers`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ golferId, name }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Failed to save name')
+        return
+      }
+      setEditingName(null)
+      router.refresh()
+      await handleTestEspnNames()
+    } finally {
+      setNameSaveLoading(false)
+    }
+  }
+
+  // Build a lookup from golfer ID to ESPN result for easy table rendering
+  const espnById = new Map<string, EspnGolfer>(
+    espnResult?.golfers.map((g) => [g.id, g]) ?? []
+  )
 
   const leaderboard = computeLeaderboard(competition)
   const isLiveOrComplete = competition.status === 'live' || competition.status === 'complete'
@@ -197,97 +178,131 @@ export default function CompetitionManager({ competition }: { competition: Compe
         <h2 className="section-heading">Golfer Field</h2>
 
         {competition.status === 'live' ? (
-          <form onSubmit={handleSaveScores}>
+          <>
             <table className="data-table" style={{ marginBottom: '0.75rem' }}>
               <thead>
                 <tr>
                   <th>Golfer</th>
                   <th>Odds</th>
-                  <th>Stroke Score</th>
-                  <th>Cut Status</th>
+                  {espnResult && <th>ESPN</th>}
                 </tr>
               </thead>
               <tbody>
-                {[...competition.field]
-                  .sort((a, b) => {
-                    const sa = savedScores[a.id] !== '' ? Number(savedScores[a.id]) : Infinity
-                    const sb = savedScores[b.id] !== '' ? Number(savedScores[b.id]) : Infinity
-                    return sa - sb
-                  })
-                  .map((g) => {
-                  const isCut =
-                    competition.cutLine !== undefined &&
-                    g.strokeScore !== undefined &&
-                    g.strokeScore > competition.cutLine
+                {competition.field.map((g) => {
+                  const espnEntry = espnById.get(g.id)
+                  const isEditing = editingName?.golferId === g.id
                   return (
-                    <tr
-                      key={g.id}
-                      style={unmatchedNames.has(g.name) ? { background: '#fff3cd' } : undefined}
-                    >
-                      <td>{g.name}</td>
-                      <td>{g.odds}/1</td>
+                    <tr key={g.id}>
                       <td>
-                        <input
-                          type="number"
-                          className="score-input"
-                          value={scores[g.id] ?? ''}
-                          onChange={(e) =>
-                            setScores({ ...scores, [g.id]: e.target.value })
-                          }
-                          placeholder="—"
-                        />
-                      </td>
-                      <td>
-                        {competition.cutLine === undefined ? (
-                          <span style={{ color: 'var(--gray-600)', fontSize: '0.82rem' }}>No cut set</span>
-                        ) : isCut ? (
-                          <span style={{ color: '#e05252', fontWeight: 600, fontSize: '0.82rem' }}>✕ Cut</span>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              className="text-input"
+                              style={{ padding: '0.25rem 0.4rem', fontSize: '0.9rem' }}
+                              value={editingName.value}
+                              onChange={(e) =>
+                                setEditingName({ ...editingName, value: e.target.value })
+                              }
+                              autoFocus
+                            />
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleSaveName(g.id, editingName.value)}
+                              disabled={nameSaveLoading || !editingName.value.trim()}
+                            >
+                              {nameSaveLoading ? '...' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => setEditingName(null)}
+                              disabled={nameSaveLoading}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         ) : (
-                          <span style={{ color: 'var(--green-mid)', fontWeight: 600, fontSize: '0.82rem' }}>✓ In</span>
+                          g.name
                         )}
                       </td>
+                      <td>{g.odds}/1</td>
+                      {espnResult && (
+                        <td>
+                          {espnEntry?.isMatched ? (
+                            <span
+                              style={{ color: 'var(--green-mid)', fontWeight: 600, fontSize: '0.82rem' }}
+                            >
+                              ✓ Matched
+                            </span>
+                          ) : (
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: '0.5rem',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <span style={{ color: '#e05252', fontWeight: 600, fontSize: '0.82rem' }}>
+                                ✗ No match
+                              </span>
+                              {espnEntry?.espnHint && (
+                                <span style={{ color: 'var(--gray-600)', fontSize: '0.78rem' }}>
+                                  ESPN: {espnEntry.espnHint}
+                                </span>
+                              )}
+                              {!isEditing && (
+                                <button
+                                  className="btn btn-ghost btn-sm"
+                                  style={{ fontSize: '0.78rem', padding: '0.15rem 0.4rem' }}
+                                  onClick={() =>
+                                    setEditingName({
+                                      golferId: g.id,
+                                      value: espnEntry?.espnHint ?? g.name,
+                                    })
+                                  }
+                                >
+                                  Edit name
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-            {scoresMsg && (
-              <p
-                className="hint"
-                style={{ color: scoresMsg.startsWith('Scores') ? 'var(--green-mid)' : '#e05252', marginBottom: '0.5rem' }}
-              >
-                {scoresMsg}
-              </p>
-            )}
+
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={scoresLoading}>
-                {scoresLoading ? 'Saving...' : 'Save Scores'}
-              </button>
               <button
-                type="button"
                 className="btn btn-primary btn-sm"
-                onClick={handleImportScores}
-                disabled={importLoading}
+                onClick={handleTestEspnNames}
+                disabled={espnTestLoading}
               >
-                {importLoading ? 'Importing...' : 'Import Live Scores'}
+                {espnTestLoading ? 'Testing...' : 'Test ESPN Names'}
               </button>
-              {importMsg && (
-                <span
-                  className="hint"
-                  style={{ color: importMsg.startsWith('Imported') ? 'var(--green-mid)' : '#e05252' }}
-                >
-                  {importMsg}
+              {espnResult && (
+                <span className="hint" style={{ color: 'var(--green-mid)' }}>
+                  {espnResult.golfers.filter((g) => g.isMatched).length}/
+                  {espnResult.golfers.length} matched · {espnResult.tournament}
+                </span>
+              )}
+              {espnTestError && (
+                <span className="hint" style={{ color: '#e05252' }}>
+                  {espnTestError}
                 </span>
               )}
             </div>
-          </form>
+          </>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
                 <th>Golfer</th>
                 <th>Odds</th>
-                {isLiveOrComplete && <th>Score</th>}
+                {competition.status === 'complete' && <th>Score</th>}
               </tr>
             </thead>
             <tbody>
@@ -295,7 +310,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 <tr key={g.id}>
                   <td>{g.name}</td>
                   <td>{g.odds}/1</td>
-                  {isLiveOrComplete && <td>{g.strokeScore ?? '—'}</td>}
+                  {competition.status === 'complete' && <td>{g.strokeScore ?? '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -314,7 +329,10 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 <> Currently set to <strong>{competition.cutLine}</strong>.</>
               )}
             </p>
-            <form onSubmit={handleSetCutLine} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <form
+              onSubmit={handleSetCutLine}
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+            >
               <input
                 type="number"
                 className="score-input"
@@ -328,7 +346,10 @@ export default function CompetitionManager({ competition }: { competition: Compe
                 {cutLoading ? 'Saving...' : 'Set Cut Line'}
               </button>
               {cutMsg && (
-                <span className="hint" style={{ color: cutMsg.startsWith('Cut') ? 'var(--green-mid)' : '#e05252' }}>
+                <span
+                  className="hint"
+                  style={{ color: cutMsg.startsWith('Cut') ? 'var(--green-mid)' : '#e05252' }}
+                >
                   {cutMsg}
                 </span>
               )}
@@ -372,12 +393,24 @@ export default function CompetitionManager({ competition }: { competition: Compe
                         {g.strokeScore !== undefined ? ` (${g.strokeScore})` : ''}
                       </td>
                     ))}
-                    <td>{entry.golfers.every((g) => g.strokeScore !== undefined) ? entry.totalScore : '—'}</td>
+                    <td>
+                      {entry.golfers.every((g) => g.strokeScore !== undefined)
+                        ? entry.totalScore
+                        : '—'}
+                    </td>
                     <td>
                       {entry.eliminated ? (
-                        <span style={{ color: '#e05252', fontSize: '0.82rem', fontWeight: 600 }}>Eliminated</span>
+                        <span
+                          style={{ color: '#e05252', fontSize: '0.82rem', fontWeight: 600 }}
+                        >
+                          Eliminated
+                        </span>
                       ) : isWinner ? (
-                        <span style={{ color: 'var(--green-mid)', fontSize: '0.82rem', fontWeight: 600 }}>Winner</span>
+                        <span
+                          style={{ color: 'var(--green-mid)', fontSize: '0.82rem', fontWeight: 600 }}
+                        >
+                          Winner
+                        </span>
                       ) : (
                         <span style={{ color: 'var(--green-mid)', fontSize: '0.82rem' }}>In</span>
                       )}
@@ -406,7 +439,9 @@ export default function CompetitionManager({ competition }: { competition: Compe
                   <tr key={pick.id}>
                     <td>{pick.participantName}</td>
                     {golfers.map((g, i) => (
-                      <td key={i}>{g.name} ({g.odds}/1)</td>
+                      <td key={i}>
+                        {g.name} ({g.odds}/1)
+                      </td>
                     ))}
                     <td>{combined}/1</td>
                   </tr>

@@ -252,18 +252,16 @@ export default function PicksView({ competition }: { competition: Competition })
           <>
             <hr className="divider" />
             <h2 className="section-heading">Leaderboard</h2>
-            {competition.scoresUpdatedAt && (
-              <p className="hint" style={{ marginBottom: '0.75rem', color: '#c0392b' }}>
-                Scores last updated:{' '}
-                {(() => {
-                  const mins = Math.floor((Date.now() - new Date(competition.scoresUpdatedAt!).getTime()) / 60000)
-                  if (mins < 1) return 'just now'
-                  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`
-                  const hrs = Math.floor(mins / 60)
-                  return `${hrs} hour${hrs === 1 ? '' : 's'} ago`
-                })()}
+            {competition.status === 'live' ? (
+              <p className="hint" style={{ marginBottom: '0.75rem' }}>
+                Live scores from ESPN.
               </p>
-            )}
+            ) : competition.scoresUpdatedAt ? (
+              <p className="hint" style={{ marginBottom: '0.75rem' }}>
+                Final scores from{' '}
+                {new Date(competition.scoresUpdatedAt).toLocaleString()}.
+              </p>
+            ) : null}
             {competition.cutLine !== undefined && (
               <p className="hint" style={{ marginBottom: '0.75rem' }}>
                 Cut line: {competition.cutLine} strokes. Golfers above this are cut.

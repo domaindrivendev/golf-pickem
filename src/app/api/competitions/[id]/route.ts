@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { readCompetitionById } from '@/lib/storage'
+import { fetchEspnScores } from '@/lib/espn'
 
 const STATUS_ORDER = ['draft', 'open', 'live', 'complete'] as const
 
@@ -44,6 +45,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Already complete' }, { status: 400 })
     }
     const nextStatus = STATUS_ORDER[currentIdx + 1]
+
+    if (nextStatus === 'complete') {
+      // Snapshot final scores from ESPN before marking complete
+      const espnResult = await fetchEspnScores(competition.field.map((g) => ({ id: g.id, name: g.name })))
+      const matched = espnResult?.golfers.filter((g) => g.isMatched) ?? []
+      if (matched.length > 0) {
+        await Promise.all(
+          matched.map((g) =>
+            prisma.golfer.update({ where: { id: g.id }, data: { strokeScore: g.score } })
+          )
+        )
+        await prisma.competition.update({
+          where: { id: params.id },
+          data: { status: nextStatus, scoresUpdatedAt: new Date() },
+        })
+        return NextResponse.json({ ...competition, status: nextStatus })
+      }
+    }
+
     await prisma.competition.update({
       where: { id: params.id },
       data: { status: nextStatus },

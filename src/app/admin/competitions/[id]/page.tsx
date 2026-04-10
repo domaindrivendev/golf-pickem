@@ -1,5 +1,6 @@
 import { getSession } from '@/lib/auth'
 import { readCompetitions } from '@/lib/storage'
+import { fetchEspnScores } from '@/lib/espn'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import CompetitionManager from './CompetitionManager'
@@ -11,6 +12,20 @@ export default async function AdminCompetitionPage({ params }: { params: { id: s
   const competitions = await readCompetitions()
   const competition = competitions.find((c) => c.id === params.id)
   if (!competition) notFound()
+
+  let enrichedCompetition = competition
+  if (competition.status === 'live') {
+    const espnResult = await fetchEspnScores(competition.field)
+    if (espnResult) {
+      enrichedCompetition = {
+        ...competition,
+        field: competition.field.map((g) => {
+          const espnGolfer = espnResult.golfers.find((eg) => eg.id === g.id)
+          return { ...g, strokeScore: espnGolfer?.score ?? undefined }
+        }),
+      }
+    }
+  }
 
   return (
     <>
@@ -26,7 +41,7 @@ export default async function AdminCompetitionPage({ params }: { params: { id: s
       </header>
 
       <div className="page-wrapper page-wrapper-wide">
-        <CompetitionManager competition={competition} />
+        <CompetitionManager competition={enrichedCompetition} />
       </div>
     </>
   )

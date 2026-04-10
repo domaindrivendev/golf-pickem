@@ -252,19 +252,9 @@ export default function PicksView({ competition }: { competition: Competition })
           <>
             <hr className="divider" />
             <h2 className="section-heading">Leaderboard</h2>
-            {competition.status === 'live' ? (
-              <p className="hint" style={{ marginBottom: '0.75rem' }}>
-                Live scores from ESPN.
-              </p>
-            ) : competition.scoresUpdatedAt ? (
-              <p className="hint" style={{ marginBottom: '0.75rem' }}>
-                Final scores from{' '}
-                {new Date(competition.scoresUpdatedAt).toLocaleString()}.
-              </p>
-            ) : null}
-            {competition.cutLine !== undefined && (
-              <p className="hint" style={{ marginBottom: '0.75rem' }}>
-                Cut line: {competition.cutLine} strokes. Golfers above this are cut.
+            {competition.status === 'live' && (
+              <p className="hint" style={{ marginBottom: '0.75rem', color: 'red' }}>
+                Based on ESPN live scores
               </p>
             )}
             {leaderboard.length === 0 ? (

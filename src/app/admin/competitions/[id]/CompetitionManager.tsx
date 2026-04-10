@@ -36,11 +36,11 @@ function computeLeaderboard(competition: Competition) {
 
 export default function CompetitionManager({ competition }: { competition: Competition }) {
   const router = useRouter()
-  const [scores, setScores] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      competition.field.map((g) => [g.id, g.strokeScore !== undefined ? String(g.strokeScore) : ''])
-    )
+  const initialScores = Object.fromEntries(
+    competition.field.map((g) => [g.id, g.strokeScore !== undefined ? String(g.strokeScore) : ''])
   )
+  const [scores, setScores] = useState<Record<string, string>>(initialScores)
+  const [savedScores, setSavedScores] = useState<Record<string, string>>(initialScores)
   const [cutLine, setCutLine] = useState(
     competition.cutLine !== undefined ? String(competition.cutLine) : ''
   )
@@ -54,6 +54,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
   // Import live scores state
   const [importLoading, setImportLoading] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  const [unmatchedNames, setUnmatchedNames] = useState<Set<string>>(new Set())
 
   async function handleAdvance() {
     const nextLabel = NEXT_STATUS_LABELS[competition.status]
@@ -93,6 +94,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
         return
       }
       setScoresMsg('Scores saved.')
+      setSavedScores({ ...scores })
       router.refresh()
     } finally {
       setScoresLoading(false)
@@ -123,6 +125,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
 
   async function handleImportScores() {
     setImportMsg('')
+    setUnmatchedNames(new Set())
     setImportLoading(true)
     try {
       const res = await fetch(`/api/competitions/${competition.id}/import-scores`, {
@@ -135,8 +138,9 @@ export default function CompetitionManager({ competition }: { competition: Compe
       }
       const { matched, unmatched } = data as {
         matched: Array<{ id: string; name: string; score: number }>
-        unmatched: string[]
+        unmatched: Array<{ competition: string; espn: string | null }>
       }
+      setUnmatchedNames(new Set(unmatched.map((u) => u.competition)))
       setImportMsg(
         `Imported ${matched.length}/${matched.length + unmatched.length} golfers.` +
         (unmatched.length > 0 ? ` ${unmatched.length} not matched.` : '')
@@ -147,6 +151,7 @@ export default function CompetitionManager({ competition }: { competition: Compe
         for (const m of matched) {
           updated[m.id] = String(m.score)
         }
+        setSavedScores(updated)
         return updated
       })
       router.refresh()
@@ -205,8 +210,8 @@ export default function CompetitionManager({ competition }: { competition: Compe
               <tbody>
                 {[...competition.field]
                   .sort((a, b) => {
-                    const sa = scores[a.id] !== '' ? Number(scores[a.id]) : Infinity
-                    const sb = scores[b.id] !== '' ? Number(scores[b.id]) : Infinity
+                    const sa = savedScores[a.id] !== '' ? Number(savedScores[a.id]) : Infinity
+                    const sb = savedScores[b.id] !== '' ? Number(savedScores[b.id]) : Infinity
                     return sa - sb
                   })
                   .map((g) => {
@@ -215,7 +220,10 @@ export default function CompetitionManager({ competition }: { competition: Compe
                     g.strokeScore !== undefined &&
                     g.strokeScore > competition.cutLine
                   return (
-                    <tr key={g.id}>
+                    <tr
+                      key={g.id}
+                      style={unmatchedNames.has(g.name) ? { background: '#fff3cd' } : undefined}
+                    >
                       <td>{g.name}</td>
                       <td>{g.odds}/1</td>
                       <td>

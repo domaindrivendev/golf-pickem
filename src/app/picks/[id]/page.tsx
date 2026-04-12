@@ -1,5 +1,6 @@
 import { getSession } from '@/lib/auth'
 import { readCompetitions } from '@/lib/storage'
+import { fetchEspnScores } from '@/lib/espn'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import PicksView from './PicksView'
@@ -9,6 +10,20 @@ export default async function PicksCompetitionPage({ params }: { params: { id: s
   const competitions = await readCompetitions()
   const competition = competitions.find((c) => c.id === params.id)
   if (!competition || competition.status === 'draft') notFound()
+
+  let enrichedCompetition = competition
+  if (competition.status === 'live') {
+    const espnResult = await fetchEspnScores(competition.field)
+    if (espnResult) {
+      enrichedCompetition = {
+        ...competition,
+        field: competition.field.map((g) => {
+          const espnGolfer = espnResult.golfers.find((eg) => eg.id === g.id)
+          return { ...g, strokeScore: espnGolfer?.score ?? undefined }
+        }),
+      }
+    }
+  }
 
   return (
     <>
@@ -30,7 +45,7 @@ export default async function PicksCompetitionPage({ params }: { params: { id: s
       </header>
 
       <div className="page-wrapper page-wrapper-wide">
-        <PicksView competition={competition} />
+        <PicksView competition={enrichedCompetition} />
       </div>
     </>
   )

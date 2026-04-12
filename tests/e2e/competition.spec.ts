@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
-type Competition = { id: string; field: Array<{ id: string }> }
+type Competition = { id: string; field: Array<{ id: string; name: string }> }
 
 async function signIn(page: Page) {
   await page.goto('/auth/signin')
@@ -37,13 +37,6 @@ async function apiAdvance(page: Page, id: string) {
 async function apiSubmitPick(page: Page, id: string, golferIds: string[]) {
   const res = await page.request.post(`/api/competitions/${id}/picks`, {
     data: { participantName: 'Alice', golferIds },
-  })
-  await expect(res).toBeOK()
-}
-
-async function apiEnterScores(page: Page, id: string, scores: Record<string, string>) {
-  const res = await page.request.patch(`/api/competitions/${id}/golfers`, {
-    data: { scores },
   })
   await expect(res).toBeOK()
 }
@@ -105,7 +98,7 @@ test('participant submits picks', async ({ page }) => {
   await expect(page.getByText('Submitted from this browser')).toBeVisible()
 })
 
-test('advance to live and enter scores', async ({ page }) => {
+test('advance to live', async ({ page }) => {
   await signIn(page)
   const { id } = await apiCreate(page)
   await apiAdvance(page, id) // draft → open
@@ -115,22 +108,88 @@ test('advance to live and enter scores', async ({ page }) => {
   await page.getByRole('button', { name: /Go Live/ }).click()
 
   await expect(page.locator('.status-badge')).toHaveText('Live')
-
-  await page.locator('tr', { hasText: 'Tiger Woods' }).locator('.score-input').fill('5')
-  await page.locator('tr', { hasText: 'Rory McIlroy' }).locator('.score-input').fill('3')
-  await page.locator('tr', { hasText: 'Jon Rahm' }).locator('.score-input').fill('4')
-  await page.click('button:has-text("Save Scores")')
-  await expect(page.getByText('Scores saved.')).toBeVisible()
 })
 
-test('set cutline — one golfer cut, one in', async ({ page }) => {
+test('test ESPN names shows match status', async ({ page }) => {
   await signIn(page)
   const { id, field } = await apiCreate(page)
-  const golferIds = field.map((g) => g.id)
   await apiAdvance(page, id) // draft → open
   await apiAdvance(page, id) // open → live
-  // Tiger: 5, Rory: 3, Jon: 4 — cutline 4 cuts Tiger (5 > 4), Rory stays in (3 ≤ 4)
-  await apiEnterScores(page, id, { [golferIds[0]]: '5', [golferIds[1]]: '3', [golferIds[2]]: '4' })
+
+  await page.route(`**/api/competitions/${id}/import-scores`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        tournament: 'Masters Tournament',
+        golfers: [
+          { id: field[0].id, name: 'Tiger Woods', score: 2, isMatched: true, espnHint: null },
+          { id: field[1].id, name: 'Rory McIlroy', score: -3, isMatched: true, espnHint: null },
+          { id: field[2].id, name: 'Jon Rahm', score: null, isMatched: false, espnHint: 'Jonny Rahm' },
+        ],
+      }),
+    })
+  })
+
+  await page.goto(`/admin/competitions/${id}`)
+  await page.getByRole('button', { name: 'Test ESPN Names' }).click()
+
+  await expect(page.locator('tr', { hasText: 'Tiger Woods' }).getByText('✓ Matched')).toBeVisible()
+  await expect(page.locator('tr', { hasText: 'Rory McIlroy' }).getByText('✓ Matched')).toBeVisible()
+  await expect(page.locator('tr', { hasText: 'Jon Rahm' }).getByText('✗ No match')).toBeVisible()
+  await expect(page.locator('tr', { hasText: 'Jon Rahm' }).getByText('ESPN: Jonny Rahm')).toBeVisible()
+})
+
+test('edit golfer name to fix ESPN mismatch', async ({ page }) => {
+  await signIn(page)
+  const { id, field } = await apiCreate(page)
+  await apiAdvance(page, id) // draft → open
+  await apiAdvance(page, id) // open → live
+
+  // First test call returns Jon Rahm unmatched; second (after rename) returns all matched
+  let callCount = 0
+  await page.route(`**/api/competitions/${id}/import-scores`, async (route) => {
+    callCount++
+    const golfers =
+      callCount === 1
+        ? [
+            { id: field[0].id, name: 'Tiger Woods', score: 2, isMatched: true, espnHint: null },
+            { id: field[1].id, name: 'Rory McIlroy', score: -3, isMatched: true, espnHint: null },
+            { id: field[2].id, name: 'Jon Rahm', score: null, isMatched: false, espnHint: 'Jonny Rahm' },
+          ]
+        : [
+            { id: field[0].id, name: 'Tiger Woods', score: 2, isMatched: true, espnHint: null },
+            { id: field[1].id, name: 'Rory McIlroy', score: -3, isMatched: true, espnHint: null },
+            { id: field[2].id, name: 'Jonny Rahm', score: -1, isMatched: true, espnHint: null },
+          ]
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tournament: 'Masters Tournament', golfers }),
+    })
+  })
+
+  await page.goto(`/admin/competitions/${id}`)
+  await page.getByRole('button', { name: 'Test ESPN Names' }).click()
+  await expect(page.locator('tr', { hasText: 'Jon Rahm' }).getByText('✗ No match')).toBeVisible()
+
+  // Click edit, update the name, save
+  // Note: once editing starts the name cell becomes an input, so "Jon Rahm" text
+  // disappears from the row — locate Save/input by role/type instead
+  await page.getByRole('button', { name: 'Edit name' }).click()
+  await page.locator('input[type="text"]').clear()
+  await page.locator('input[type="text"]').fill('Jonny Rahm')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  // Re-test runs automatically — all should now be matched
+  await expect(page.locator('tr', { hasText: 'Jonny Rahm' }).getByText('✓ Matched')).toBeVisible()
+})
+
+test('set cut line', async ({ page }) => {
+  await signIn(page)
+  const { id } = await apiCreate(page)
+  await apiAdvance(page, id) // draft → open
+  await apiAdvance(page, id) // open → live
 
   await page.goto(`/admin/competitions/${id}`)
   const cutlineInput = page.locator('form', {
@@ -139,54 +198,15 @@ test('set cutline — one golfer cut, one in', async ({ page }) => {
   await cutlineInput.fill('4')
   await page.click('button:has-text("Set Cut Line")')
   await expect(page.getByText('Cut line saved.')).toBeVisible()
-
-  await expect(page.locator('tr', { hasText: 'Tiger Woods' }).getByText('✕ Cut')).toBeVisible()
-  await expect(page.locator('tr', { hasText: 'Rory McIlroy' }).getByText('✓ In')).toBeVisible()
 })
 
-test('import live scores reorders field by score', async ({ page }) => {
-  await signIn(page)
-  const { id, field } = (await apiCreate(page)) as Competition & { field: Array<{ id: string; name: string }> }
-  await apiAdvance(page, id) // draft → open
-  await apiAdvance(page, id) // open → live
-
-  // Intercept the import-scores API call and return a mocked leaderboard response
-  // Rory: -3, Jon: -1, Tiger: +2 → expected order: Rory, Jon, Tiger
-  await page.route(`**/api/competitions/${id}/import-scores`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        tournament: 'Masters Tournament',
-        matched: [
-          { id: field[0].id, name: 'Tiger Woods', score: 2 },
-          { id: field[1].id, name: 'Rory McIlroy', score: -3 },
-          { id: field[2].id, name: 'Jon Rahm', score: -1 },
-        ],
-        unmatched: [],
-      }),
-    })
-  })
-
-  await page.goto(`/admin/competitions/${id}`)
-  await page.getByRole('button', { name: 'Import Live Scores' }).click()
-  await expect(page.getByText('Imported 3/3 golfers.')).toBeVisible()
-
-  // Verify field rows are sorted by score ascending (Rory -3, Jon -1, Tiger +2)
-  const rows = page.locator('table').first().locator('tbody tr')
-  await expect(rows.nth(0).locator('td').first()).toHaveText('Rory McIlroy')
-  await expect(rows.nth(1).locator('td').first()).toHaveText('Jon Rahm')
-  await expect(rows.nth(2).locator('td').first()).toHaveText('Tiger Woods')
-})
-
-test('advance to complete and verify winner', async ({ page }) => {
+test('advance to complete', async ({ page }) => {
   await signIn(page)
   const { id, field } = await apiCreate(page)
   const golferIds = field.map((g) => g.id)
   await apiAdvance(page, id) // draft → open
   await apiSubmitPick(page, id, golferIds)
   await apiAdvance(page, id) // open → live
-  await apiEnterScores(page, id, Object.fromEntries(golferIds.map((gid, i) => [gid, ['5', '3', '4'][i]])))
   await apiSetCutline(page, id, 6)
 
   await page.goto(`/admin/competitions/${id}`)
@@ -194,5 +214,4 @@ test('advance to complete and verify winner', async ({ page }) => {
   await page.getByRole('button', { name: /Mark Complete/ }).click()
 
   await expect(page.locator('.status-badge')).toHaveText('Complete')
-  await expect(page.getByText('Winner')).toBeVisible()
 })

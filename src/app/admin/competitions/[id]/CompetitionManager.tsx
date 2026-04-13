@@ -23,9 +23,7 @@ function computeLeaderboard(competition: Competition) {
     .map((pick) => {
       const golfers = pick.golferIds.map((id) => competition.field.find((g) => g.id === id)!)
       const totalScore = golfers.reduce((sum, g) => sum + (g.strokeScore ?? 0), 0)
-      const eliminated =
-        competition.cutLine !== undefined &&
-        golfers.some((g) => g.strokeScore !== undefined && g.strokeScore > competition.cutLine!)
+      const eliminated = competition.cutLine !== undefined && golfers.some((g) => g.missedCut)
       return { pick, golfers, totalScore, eliminated }
     })
     .sort((a, b) => {

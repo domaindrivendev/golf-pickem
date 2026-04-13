@@ -14,6 +14,7 @@ export interface Golfer {
   name: string
   odds: number
   strokeScore?: number
+  missedCut?: boolean
 }
 
 export interface Pick {
@@ -56,6 +57,7 @@ function mapCompetition(c: CompetitionRow): Competition {
       name: g.name,
       odds: g.odds,
       strokeScore: g.strokeScore ?? undefined,
+      missedCut: g.missedCut || undefined,
     })),
     picks: c.picks.map((p) => ({
       id: p.id,

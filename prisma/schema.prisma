@@ -32,6 +32,7 @@ model Golfer {
   name          String
   odds          Int
   strokeScore   Int?
+  missedCut     Boolean     @default(false)
   competitionId String
   competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   picks         PickGolfer[]

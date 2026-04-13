@@ -81,6 +81,14 @@ export async function PATCH(
       where: { id: params.id },
       data: { cutLine },
     })
+    // Snapshot which golfers currently exceed the cut line
+    const espnResult = await fetchEspnScores(competition.field.map((g) => ({ id: g.id, name: g.name })))
+    const scored = espnResult?.golfers.filter((g) => g.isMatched) ?? []
+    await Promise.all(
+      scored
+        .filter((g) => (g.score ?? 0) > cutLine)
+        .map((g) => prisma.golfer.update({ where: { id: g.id }, data: { missedCut: true } }))
+    )
     return NextResponse.json({ ...competition, cutLine })
   } else {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

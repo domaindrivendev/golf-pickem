@@ -17,9 +17,7 @@ function computeLeaderboard(competition: Competition) {
     .map((pick) => {
       const golfers = pick.golferIds.map((id) => competition.field.find((g) => g.id === id)!)
       const totalScore = golfers.reduce((sum, g) => sum + (g.strokeScore ?? 0), 0)
-      const eliminated =
-        competition.cutLine !== undefined &&
-        golfers.some((g) => g.strokeScore !== undefined && g.strokeScore > competition.cutLine!)
+      const eliminated = competition.cutLine !== undefined && golfers.some((g) => g.missedCut)
       return { pick, golfers, totalScore, eliminated }
     })
     .sort((a, b) => {
@@ -234,10 +232,7 @@ export default function PicksView({ competition }: { competition: Competition })
                 <div className="my-picks-grid">
                   {pick.golferIds.map((id) => {
                     const g = competition.field.find((gf) => gf.id === id)!
-                    const isCut =
-                      competition.cutLine !== undefined &&
-                      g.strokeScore !== undefined &&
-                      g.strokeScore > competition.cutLine
+                    const isCut = competition.cutLine !== undefined && g.missedCut
                     return (
                       <div key={id} className={`my-pick-card ${isCut ? 'pick-cut' : ''}`}>
                         <div className="my-pick-name">{g.name}</div>
@@ -308,11 +303,9 @@ export default function PicksView({ competition }: { competition: Competition })
                           <td key={gi}>
                             {g.name}
                             {g.strokeScore !== undefined ? ` (${g.strokeScore})` : ''}
-                            {competition.cutLine !== undefined &&
-                              g.strokeScore !== undefined &&
-                              g.strokeScore > competition.cutLine && (
-                                <span style={{ color: '#e05252', marginLeft: '0.25rem', fontSize: '0.78rem' }}>✕</span>
-                              )}
+                            {competition.cutLine !== undefined && g.missedCut && (
+                              <span style={{ color: '#e05252', marginLeft: '0.25rem', fontSize: '0.78rem' }}>✕</span>
+                            )}
                           </td>
                         ))}
                         <td>

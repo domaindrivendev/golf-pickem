@@ -380,11 +380,12 @@ export default function CompetitionManager({ competition }: { competition: Compe
             </thead>
             <tbody>
               {leaderboard.map((entry, i) => {
-                const isWinner = competition.status === 'complete' && i === 0 && !entry.eliminated
+                const rank = entry.eliminated ? null : leaderboard.findIndex((e) => !e.eliminated && e.totalScore === entry.totalScore) + 1
+                const isWinner = competition.status === 'complete' && !entry.eliminated && rank === 1
                 return (
                   <tr key={entry.pick.id} className={entry.eliminated ? 'row-eliminated' : ''}>
                     <td className="rank-cell">
-                      {entry.eliminated ? '—' : isWinner ? '🏆' : i + 1}
+                      {entry.eliminated ? '—' : isWinner ? '🏆' : rank}
                     </td>
                     <td>{entry.pick.participantName}</td>
                     {entry.golfers.map((g, gi) => (

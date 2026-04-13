@@ -92,7 +92,8 @@ export default function PicksView({ competition }: { competition: Competition })
 
   const isLiveOrComplete = competition.status === 'live' || competition.status === 'complete'
   const leaderboard = isLiveOrComplete ? computeLeaderboard(competition) : []
-  const winner = competition.status === 'complete' ? leaderboard.find((e) => !e.eliminated) : null
+  const topEntry = competition.status === 'complete' ? leaderboard.find((e) => !e.eliminated) : null
+  const winners = topEntry ? leaderboard.filter((e) => !e.eliminated && e.totalScore === topEntry.totalScore) : []
 
   return (
     <div className="card">
@@ -107,10 +108,17 @@ export default function PicksView({ competition }: { competition: Competition })
 
       <div className="card-body">
         {/* ── Winner announcement ───────────────────── */}
-        {winner && (
+        {winners.length === 1 && (
           <div className="alert alert-success" style={{ marginBottom: '1.5rem', fontSize: '1rem' }}>
-            🏆 <strong>Winner: {winner.pick.participantName}</strong> with a total of{' '}
-            {winner.totalScore} strokes
+            🏆 <strong>Winner: {winners[0].pick.participantName}</strong> with a total of{' '}
+            {winners[0].totalScore} strokes
+          </div>
+        )}
+        {winners.length > 1 && (
+          <div className="alert alert-success" style={{ marginBottom: '1.5rem', fontSize: '1rem' }}>
+            🏆 <strong>Tie!</strong>{' '}
+            <strong>{winners.map((w) => w.pick.participantName).join(', ')}</strong> are tied with{' '}
+            {winners[0].totalScore} strokes
           </div>
         )}
 
@@ -274,7 +282,8 @@ export default function PicksView({ competition }: { competition: Competition })
                 </thead>
                 <tbody>
                   {leaderboard.map((entry, i) => {
-                    const isWinner = competition.status === 'complete' && i === 0 && !entry.eliminated
+                    const rank = entry.eliminated ? null : leaderboard.findIndex((e) => !e.eliminated && e.totalScore === entry.totalScore) + 1
+                    const isWinner = competition.status === 'complete' && !entry.eliminated && rank === 1
                     const isMe = myPickIds.has(entry.pick.id)
                     return (
                       <tr
@@ -285,7 +294,7 @@ export default function PicksView({ competition }: { competition: Competition })
                         ].filter(Boolean).join(' ')}
                       >
                         <td className="rank-cell">
-                          {entry.eliminated ? '—' : isWinner ? '🏆' : i + 1}
+                          {entry.eliminated ? '—' : isWinner ? '🏆' : rank}
                         </td>
                         <td>
                           {entry.pick.participantName}
